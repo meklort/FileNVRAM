@@ -1,0 +1,10 @@
+#
+# Chameleon Modules
+#
+
+config FILENVRAM_MODULE
+	tristate "FileNVRAM Module"
+	default m
+	---help---
+	  Say Y here if you want to enable preloading NVRAM information into xnu when using FileNVRAM.kext.
+
