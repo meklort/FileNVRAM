@@ -16,9 +16,10 @@
 #define FILENVRAM_INTERNAL_H
 
 #define FILE_NVRAM_GULD         "D8F0CCF5-580E-4334-87B6-9FBBB831271D"
-#define NVRAM_GEN_MLB           "BCA86A20-AEEC-4A78-AE12-19F445CC542D"
-#define NVRAM_GEN_ROM           "F3DF7F8A-C8AB-4348-A806-5CE17BEC1D62"
-#define NVRAM_SET_FILE_PATH     "D6929EE3F6C246F4A295FCB3C06302D"
+#define NVRAM_GEN_MLB           "GenerateMLB"
+#define NVRAM_GEN_ROM           "GenerateROM"
+#define NVRAM_ENABLE_LOG        "EnableLogging"
+#define NVRAM_SET_FILE_PATH     "NVRAMFile"
 
 #define GetPackageElement(e)     OSSwapBigToHostInt32(package->e)
 #define kDriverPackageSignature1 'MKXT'

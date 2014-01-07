@@ -47,8 +47,6 @@ static BVRef scanforNVRAM(BVRef chain);
 static void readplist();
 static void getcommandline(char* args, char* args_end)
 
-extern char*   gBootArgs;
-
 static char* gCommandline;
 static void clearBootArgsHook();
 
