@@ -19,11 +19,16 @@ extern "C" {
 
 #include <sys/kernel.h>
 #include <sys/vnode.h>
+#include <sys/proc.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <libkern/libkern.h>
+    
+#include <IOKit/IOLib.h>
 
 int write_buffer(const char* path, char* buffer, int length, vfs_context_t ctx);
+int read_buffer(const char* path, char** buffer, uint64_t* length, vfs_context_t ctx);
 
 
 #ifdef __cplusplus

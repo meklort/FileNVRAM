@@ -38,12 +38,12 @@ int write_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
     return 0;
 }
 
-#if 0 /* Disabled, has not been tested and probably doesn't work. */
-
-int read_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
+int read_buffer(const char* path, char** buffer, uint64_t* length, vfs_context_t ctx)
 {
     int error;
     struct vnode * vp;
+    struct vnode_attr ap;
+
     
     if ((error = vnode_open(path, (O_RDONLY | FREAD | O_NOFOLLOW), S_IRUSR, VNODE_LOOKUP_NOFOLLOW, &vp, ctx)))
     {
@@ -51,9 +51,25 @@ int read_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
         return error;
     }
     
-    if ((error = vn_rdwr(UIO_READ, vp, buffer, length, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(ctx), (int *) 0, vfs_context_proc(ctx))))
+    
+    VATTR_INIT(&ap);
+    VATTR_WANTED(&ap, va_data_size);
+    
+    // Determine size of vnode
+    if((error = vnode_getattr(vp, &ap, ctx)))
     {
-        printf("Error writing to vnode at path %s, errno %d\n",path,error);
+        printf("failed to determine file size of %s, errno %d.\n", path, error);
+    }
+    else
+    {
+        if(length) *length = ap.va_data_size;
+        *buffer = IOMalloc(ap.va_data_size);
+        int len = (int)ap.va_data_size;
+        
+        if ((error = vn_rdwr(UIO_READ, vp, *buffer, len, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(ctx), (int *) 0, vfs_context_proc(ctx))))
+        {
+            printf("Error writing to vnode at path %s, errno %d\n",path,error);
+        }
     }
     
     if ((error = vnode_close(vp, NULL, ctx)))
@@ -63,5 +79,3 @@ int read_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
     
     return 0;
 }
-
-#endif
