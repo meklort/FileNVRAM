@@ -73,11 +73,6 @@ do {                        \
 #define NVRAM_ENABLE_LOG        "EnableLogging"
 #define NVRAM_SET_FILE_PATH     "NVRAMFile"
 
-
-#define NVRAM_FAKE_1            "6AEDDBA4-6C04-416A-B2EA-D2E6AADA0F98"
-#define NVRAM_FAKE_2            "EF5E900B-B0B0-49D1-97FB-CCB71FAE653D"
-#define NVRAM_FAKE_3            "A809D471-91B4-40EB-97BA-EF82E1A8A9B2"
-
 #define NVRAM_SEPERATOR         ":"
 #define NVRAM_FILE_DT_LOCATION	"/chosen/nvram"
 #define NVRAM_FILE_HEADER		"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" \
@@ -90,8 +85,8 @@ do {                        \
 
 
 #define kNVRAMSyncCommand   1
-#define kNVRAMSetProperty   1
-#define kNVRAMGetProperty   1
+#define kNVRAMSetProperty   2
+#define kNVRAMGetProperty   4
 
 #define super IODTNVRAM
 
