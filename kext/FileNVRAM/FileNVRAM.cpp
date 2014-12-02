@@ -14,7 +14,7 @@
 #include "FileNVRAM.h"
 #include "Support.h"
 #include <IOKit/IOUserClient.h>
-
+#include <libkern/c++/OSUnserialize.h>
 /** The cpp file is included here to hide symbol names. **/
 #include "Support.cpp"
 
@@ -705,6 +705,35 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                 self->mTimer = NULL;
 
                 // TODO: Read out nvram plist and populate device tree
+                char* buffer;
+                uint64_t len;
+                if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
+                {
+                    ERROR("Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
+                }
+                else
+                {
+                    if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
+                    {
+                        char* xml = buffer + strlen(NVRAM_FILE_HEADER);
+                        size_t xmllen = len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
+                        xml[xmllen] = 0;
+                        printf("Read in nvram data %s\n", xml);
+                        OSObject* nvram = OSUnserializeXML(xml, xmllen);
+
+                        printf("Attempting to use nvram data form disk (%p).", nvram);
+                        if(nvram)
+                        {
+                            OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
+                            if(data) self->setPropertyTable(data);
+                            printf("Found dictionary. (%p, %p)\n", nvram, data);
+                            nvram->release();
+                        }
+
+                    }
+                    IOFree(buffer, len);
+                }
+
                 
                 self->registerNVRAM();
                 self->sync();
