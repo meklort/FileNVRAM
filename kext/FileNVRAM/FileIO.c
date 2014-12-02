@@ -56,7 +56,7 @@ int read_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
         printf("Error writing to vnode at path %s, errno %d\n",path,error);
     }
     
-    if ((error = vnode_close(vp, FWASWRITTEN, ctx)))
+    if ((error = vnode_close(vp, NULL, ctx)))
     {
         printf("Error closing vnode errno %d\n",error);
     }
