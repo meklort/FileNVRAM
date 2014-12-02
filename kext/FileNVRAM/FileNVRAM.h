@@ -146,7 +146,10 @@ public:
 
     
 private:
-    virtual void timeoutOccurred(IOTimerEventSource* timer);
+    static void timeoutOccurred(OSObject *target, IOTimerEventSource* timer);
+    
+    virtual void registerNVRAM();
+    
     virtual void setPath(OSString* path);
 
     virtual OSObject* cast(const OSSymbol* key, OSObject* obj);

@@ -47,6 +47,10 @@ void FileNVRAM::setPath(OSString* path)
 
 bool FileNVRAM::start(IOService *provider)
 {
+    printf("this is %p\n", this);
+
+    bool earlyInit = false;
+
     LOG("start() called (%d)\n", mInitComplete);
 
     //start is called upon wake for some reason.
@@ -56,12 +60,20 @@ bool FileNVRAM::start(IOService *provider)
     LOG("start() called (%d)\n", mInitComplete);
 
 	mFilePath		= NULL;			// no know file
-    mLoggingEnabled = false;        // start with logging disabled, can be update for debug
+    mLoggingEnabled = true;        // start with logging disabled, can be update for debug
     mInitComplete   = false;        // Don't resync anything that's already in the file system.
 	mSafeToSync     = false;        // Don't sync untill later
 
+    // We should be root right now... cache this for later.
+    mCtx            = vfs_context_current();
+
+    // Register Power modes
+    PMinit();
+    registerPowerDriver(this, sPowerStates, sizeof(sPowerStates)/sizeof(IOPMPowerState));
+    provider->joinPMtree(this);
+    
 	// set a default file path
-    //setPath(OSString::withCString("/Extra/nvram.plist"));
+    setPath(OSString::withCString("/Extra/nvram.plist"));
     
     IORegistryEntry* bootnvram = IORegistryEntry::fromPath(NVRAM_FILE_DT_LOCATION, gIODTPlane);
     IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
@@ -76,9 +88,44 @@ bool FileNVRAM::start(IOService *provider)
     setPropertyTable(dict);
         
     
-    copyEntryProperties(NULL, bootnvram);
-    if(bootnvram) bootnvram->detachFromParent(root, gIODTPlane);
+    if(bootnvram)
+    {
+        copyEntryProperties(NULL, bootnvram);
+        bootnvram->detachFromParent(root, gIODTPlane);
+    }
+    else
+    {
+        IOTimerEventSource* mTimer = IOTimerEventSource::timerEventSource(this, timeoutOccurred);
+        
+        if(mTimer)
+        {
+            getWorkLoop()->addEventSource( mTimer);
+            mTimer->setTimeoutMS(50); // callback isn't being setup right, causes a panic
+            mSafeToSync = false;
+        }
+        else
+        {
+            earlyInit = true;
+        }
+    }
+    
+    // We don't have initial nvram data from the bootloader, or we couldn't schedule a
+    // timer to read in the nvram file, so start up immediately.
+    if(earlyInit == true)
+    {
+        mSafeToSync = true;
+        registerNVRAM();
+    }
 
+    mInitComplete = true;
+    
+    return true;
+}
+
+void FileNVRAM::registerNVRAM()
+{
+    // Before we register ourselfs with IOKit, generate any required NVRAM variables.
+    
     /* Do we need to generate MLB? */
     if(!getProperty(APPLE_MLB_KEY))
     {
@@ -94,24 +141,12 @@ bool FileNVRAM::start(IOService *provider)
         handleSetting(str, kOSBooleanTrue, this);
         str->release();
     }
-    
-    IOTimerEventSource* mTimer = IOTimerEventSource::timerEventSource(this, OSMemberFunctionCast(IOTimerEventSource::Action, this, &FileNVRAM::timeoutOccurred));
 
-    getWorkLoop()->addEventSource( mTimer);
-    //mTimer->setTimeoutMS(10); // callback isn't being setup right, causes a panic
-    mInitComplete = true;
-    
-    PMinit();
-    registerPowerDriver(this, sPowerStates, sizeof(sPowerStates)/sizeof(IOPMPowerState));
-    provider->joinPMtree(this);
-
-    // We should be root right now... cache this for later. 
-    mCtx = vfs_context_current();
-	mSafeToSync = true;
     
     // Create entry in device tree -> IODeviceTree:/options
     setName("AppleEFINVRAM");
     setName("options", gIODTPlane);
+    IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
     attachToParent(root, gIODTPlane);
     registerService();
     
@@ -122,8 +157,7 @@ bool FileNVRAM::start(IOService *provider)
         callPlatformFunction(funcSym, false, this, NULL, NULL, NULL);
         funcSym->release();
     }
-
-    return true;
+   
 }
 
 void FileNVRAM::stop(IOService *provider)
@@ -629,39 +663,60 @@ IOReturn FileNVRAM::dispatchCommand( OSObject* owner,
     
     return kIOReturnSuccess;
 }
-void FileNVRAM::timeoutOccurred(IOTimerEventSource* timer)
+
+void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
 {
-    uint64_t timeout = 20000; // 20ms
-    // Check to see if BSD has been published, if so sync();
-    
-    OSDictionary *  dict = 0;
-    IOService *     match = 0;
-    boolean_t		found = false;
-    
-    do
+    if(target)
     {
-        dict = IOService::resourceMatching( "BSD" );
-        if(dict)
+        FileNVRAM* self = OSDynamicCast(FileNVRAM, target);
+        if(self)
         {
-            if(IOService::waitForMatchingService( dict, timeout ))
+            uint64_t timeout = 20000; // 20ms
+            // Check to see if BSD has been published, if so sync();
+            
+            OSDictionary *  dict = 0;
+            IOService *     match = 0;
+            boolean_t		found = false;
+            
+            do
             {
-                found = true;
+                dict = IOService::resourceMatching( "IOBSD" );
+                if(dict)
+                {
+                    if(IOService::waitForMatchingService( dict, timeout ))
+                    {
+                        found = true;
+                    }
+                }
+            } while( false );
+            
+            OSSafeReleaseNULL(dict);
+            OSSafeReleaseNULL(match);
+            
+            if(found)
+            {
+                bool mLoggingEnabled = self->mLoggingEnabled;
+                LOG("BSD found, syncing");
+                self->mSafeToSync = true;
+
+                timer->cancelTimeout();
+                self->getWorkLoop()->removeEventSource(timer);
+                timer->release();
+                self->mTimer = NULL;
+
+                self->registerNVRAM();
+                self->sync();
+            }
+            else
+            {
+                timer->setTimeoutMS(50);
             }
         }
-    } while( false );
-    
-    OSSafeReleaseNULL(dict);
-    OSSafeReleaseNULL(match);
+        else
+        {
+            //printf("Self is not of type FileNVRAM.\n");
+        }
 
-    if(found)
-    {
-        LOG("BSD found, syncing");
-        mTimer->cancelTimeout();
-        sync();
-    }
-    else
-    {
-        mTimer->setTimeoutMS(10);
     }
 }
 
