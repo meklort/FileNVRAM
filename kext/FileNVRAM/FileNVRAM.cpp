@@ -704,6 +704,8 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                 timer->release();
                 self->mTimer = NULL;
 
+                // TODO: Read out nvram plist and populate device tree
+                
                 self->registerNVRAM();
                 self->sync();
             }
