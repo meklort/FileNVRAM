@@ -38,6 +38,8 @@ int write_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
     return 0;
 }
 
+#if 0 /* Disabled, has not been tested and probably doesn't work. */
+
 int read_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
 {
     int error;
@@ -61,3 +63,5 @@ int read_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
     
     return 0;
 }
+
+#endif
