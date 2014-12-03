@@ -46,18 +46,18 @@ static inline void gen_random(char *s, const int len)
 
 static inline void handleSetting(const OSObject* object, const OSObject* value, FileNVRAM* entry)
 {
-    bool mLoggingEnabled = entry->mLoggingEnabled;
+    UInt8 mLoggingLevel = entry->mLoggingLevel;
 
     OSString* key = OSDynamicCast( OSString, object);
     
     if(!key)
     {
-        LOG("Unknown key\n");
+        LOG(NOTICE, "Unknown key\n");
         return;
     }
     else
     {
-        LOG("Handling key %s\n", key->getCStringNoCopy());
+        LOG(NOTICE, "Handling key %s\n", key->getCStringNoCopy());
     }
     
     if(key->isEqualTo(NVRAM_SET_FILE_PATH))
@@ -112,7 +112,7 @@ static inline void handleSetting(const OSObject* object, const OSObject* value, 
         if(shouldgen && shouldgen->isTrue())
         {
             // Ideally we'd read this from the primary NIC's MAC address
-            LOG("Generating ROM\n");
+            LOG(NOTICE, "Generating ROM\n");
             
             char buffer[6]; // mac addr
             bzero(buffer, sizeof(buffer));
@@ -132,11 +132,12 @@ static inline void handleSetting(const OSObject* object, const OSObject* value, 
     }
     else if(key->isEqualTo(NVRAM_ENABLE_LOG))
     {
-        OSBoolean* shouldlog = OSDynamicCast(OSBoolean, value);
+        OSData* shouldlog = OSDynamicCast(OSData, value);
         if(shouldlog)
         {
-            mLoggingEnabled = entry->mLoggingEnabled = shouldlog->getValue();
-            LOG("Setting logging to %s.\n", mLoggingEnabled ? "enabled" : "disabled");
+            const void* data = shouldlog->getBytesNoCopy();
+            mLoggingLevel = entry->mLoggingLevel = ((UInt8*)data)[0];
+            LOG(INFO, "Setting logging to level %d.\n", mLoggingLevel);
         }
 
     }

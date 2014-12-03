@@ -21,9 +21,15 @@
 #define FileNVRAM AppleNVRAM
 
 #define HEADER      __FILE__ "[" TOSTRING(__LINE__) "]: "
-#define LOG(x...)           \
+
+#define DISABLED    0
+#define ERROR       1
+#define INFO        2
+#define NOTICE      3
+
+#define LOG(__level__, x...)           \
 do {                        \
-    if(mLoggingEnabled)     \
+    if(mLoggingLevel >= __level__)     \
     {                       \
         char pname[256];        \
         proc_name(proc_pid(vfs_context_proc(vfs_context_current())), pname, sizeof(pname)); \
@@ -31,17 +37,6 @@ do {                        \
         printf( HEADER x);  \
     }                       \
 } while(0)
-
-#define ERROR(x...)         \
-do {                        \
-    if(mLoggingEnabled)     \
-    {                       \
-        char pname[256];        \
-        proc_name(proc_pid(vfs_context_proc(vfs_context_current())), pname, sizeof(pname)); \
-        printf("Process: %s, ", pname);                                                     \
-        printf( x );             \
-    }                       \
-} while(0);
 
 #ifndef kIONVRAMDeletePropertyKey
 #define kIONVRAMDeletePropertyKey	"IONVRAM-DELETE-PROPERTY"
@@ -101,7 +96,8 @@ public:
     virtual bool    passiveMatch (OSDictionary *matching, bool changesOK);
     
     virtual void    copyEntryProperties(const char* prefix, IORegistryEntry* entry);
-    
+    virtual void    copyUnserialzedData(const char* prefix, OSDictionary* dict);
+
     virtual IOReturn syncOFVariables(void);
     virtual bool init(IORegistryEntry *old, const IORegistryPlane *plane);
     
@@ -159,7 +155,7 @@ private:
     
     bool mInitComplete;
     bool mSafeToSync;
-    bool mLoggingEnabled;
+    UInt8 mLoggingLevel;
     
     vfs_context_t mCtx;
     
