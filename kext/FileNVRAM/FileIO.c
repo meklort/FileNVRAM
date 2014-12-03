@@ -18,7 +18,7 @@ int write_buffer(const char* path, char* buffer, int length, vfs_context_t ctx)
     int error;
     struct vnode * vp;
     
-    if ((error = vnode_open(path, (O_TRUNC | O_CREAT | FWRITE | O_NOFOLLOW), S_IRUSR, VNODE_LOOKUP_NOFOLLOW, &vp, ctx)))
+    if ((error = vnode_open(path, (O_TRUNC | O_CREAT | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, ctx)))
     {
         printf("failed opening vnode at path %s, errno %d\n",path, error);
         return error;
