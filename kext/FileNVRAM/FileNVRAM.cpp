@@ -459,7 +459,7 @@ bool FileNVRAM::serializeProperties(OSSerialize *s) const
 }
 
 OSObject * FileNVRAM::getProperty(const OSSymbol *aKey) const
-{        
+{
     OSObject* value = IOService::getProperty(aKey);
     if(value)
     {
@@ -755,13 +755,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
             if(found)
             {
                 UInt8 mLoggingLevel = self->mLoggingLevel;
-                LOG(NOTICE, "BSD found, syncing");
-                self->mSafeToSync = true;
-
-                timer->cancelTimeout();
-                self->getWorkLoop()->removeEventSource(timer);
-                timer->release();
-                self->mTimer = NULL;
+                LOG(NOTICE, "BSD found, syncing\n");
 
                 // TODO: Read out nvram plist and populate device tree
                 char* buffer;
@@ -769,9 +763,18 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                 if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
                 {
                     LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
+                    // TODO: Check if / is mounted, and if not, try again untill it is.
+                    timer->setTimeoutMS(100);
                 }
                 else
                 {
+                    self->mSafeToSync = true;
+                    
+                    timer->cancelTimeout();
+                    self->getWorkLoop()->removeEventSource(timer);
+                    timer->release();
+                    self->mTimer = NULL;
+
                     if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
                     {
                         char* xml = buffer + strlen(NVRAM_FILE_HEADER);
@@ -788,11 +791,12 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                         }
                     }
                     IOFree(buffer, len);
+                    
+                    
+                    self->mSafeToSync = true;
+                    self->registerNVRAM();
+                    //self->sync();
                 }
-
-                self->mSafeToSync = true;
-                self->registerNVRAM();
-                //self->sync();
             }
             else
             {
