@@ -725,6 +725,7 @@ IOReturn FileNVRAM::dispatchCommand( OSObject* owner,
 
 void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
 {
+    static int retryCount;
     if(target)
     {
         FileNVRAM* self = OSDynamicCast(FileNVRAM, target);
@@ -762,9 +763,18 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                 uint64_t len;
                 if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
                 {
+                    retryCount++;
                     LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
                     // TODO: Check if / is mounted, and if not, try again untill it is.
-                    timer->setTimeoutMS(100);
+                    if(retryCount < 100)
+                    {
+                        timer->setTimeoutMS(100);
+                    }
+                    else
+                    {
+                        self->mSafeToSync = true;
+                        self->registerNVRAM();
+                    }
                 }
                 else
                 {
