@@ -739,7 +739,6 @@ IOReturn FileNVRAM::dispatchCommand( OSObject* owner,
 
 void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
 {
-    static int retryCount;
     if(target)
     {
         FileNVRAM* self = OSDynamicCast(FileNVRAM, target);
@@ -770,68 +769,72 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
             if(found)
             {
                 UInt8 mLoggingLevel = self->mLoggingLevel;
-                LOG(NOTICE, "BSD found, syncing\n");
+                LOG(NOTICE, "BSD found, checking for /\n");
+                vnode_t root = vfs_rootvnode();
                 
-                // TODO: Read out nvram plist and populate device tree
-                char* buffer;
-                uint64_t len;
-                if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
+                if(root)
                 {
-                    retryCount++;
-                    LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
-                    // TODO: Check if / is mounted, and if not, try again untill it is.
-                    if(retryCount < 100)
+                    vnode_put(root); // releaase reference to /
+
+                    // TODO: Read out nvram plist and populate device tree
+                    char* buffer;
+                    uint64_t len;
+                    if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
                     {
-                        timer->setTimeoutMS(100);
-                    }
-                    else
-                    {
+                        // Unable to read in file, continue w/o data
+                        LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
+
                         self->mSafeToSync = true;
                         self->registerNVRAM();
                     }
-                }
-                else
-                {
-                    self->mSafeToSync = true;
-                    
-                    timer->cancelTimeout();
-                    self->getWorkLoop()->removeEventSource(timer);
-                    timer->release();
-                    self->mTimer = NULL;
-                    
-                    if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
+                    else
                     {
-                        char* xml = buffer + strlen(NVRAM_FILE_HEADER);
-                        size_t xmllen = len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
-                        xml[xmllen-1] = 0;
-                        OSObject* nvram = OSUnserializeXML(xml, xmllen);
+                        // File read in, use it
+                        self->mSafeToSync = true;
                         
-                        if(nvram)
+                        timer->cancelTimeout();
+                        self->getWorkLoop()->removeEventSource(timer);
+                        timer->release();
+                        self->mTimer = NULL;
+                        
+                        if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
                         {
-                            OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
-                            //if(data) self->setPropertyTable(data);
-                            if(data) self->copyUnserialzedData(NULL, data);
-                            nvram->release();
+                            char* xml = buffer + strlen(NVRAM_FILE_HEADER);
+                            size_t xmllen = len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
+                            xml[xmllen-1] = 0;
+                            OSObject* nvram = OSUnserializeXML(xml, xmllen);
+                            
+                            if(nvram)
+                            {
+                                OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
+                                //if(data) self->setPropertyTable(data);
+                                if(data) self->copyUnserialzedData(NULL, data);
+                                nvram->release();
+                            }
                         }
+                        IOFree(buffer, len);
+                        
+                        
+                        self->mSafeToSync = true;
+                        self->registerNVRAM();
+                        //self->sync();
                     }
-                    IOFree(buffer, len);
-                    
-                    
-                    self->mSafeToSync = true;
-                    self->registerNVRAM();
-                    //self->sync();
+
+                }
+                else /* !root */
+                {
+                    timer->setTimeoutMS(100);
                 }
             }
-            else
+            else /* !bsd */
             {
-                timer->setTimeoutMS(50);
+                timer->setTimeoutMS(100);
             }
         }
-        else
+        else /* !self */
         {
             //printf("Self is not of type FileNVRAM.\n");
         }
-        
     }
 }
 
