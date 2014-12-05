@@ -727,6 +727,7 @@ IOReturn FileNVRAM::dispatchCommand( OSObject* owner,
 
 void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
 {
+    static int retryCount;
     if(target)
     {
         FileNVRAM* self = OSDynamicCast(FileNVRAM, target);
@@ -757,72 +758,68 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
             if(found)
             {
                 UInt8 mLoggingLevel = self->mLoggingLevel;
-                LOG(NOTICE, "BSD found, checking for /\n");
-                vnode_t root = vfs_rootvnode();
+                LOG(NOTICE, "BSD found, syncing\n");
                 
-                if(root)
+                // TODO: Read out nvram plist and populate device tree
+                char* buffer;
+                uint64_t len;
+                if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
                 {
-                    vnode_put(root); // releaase reference to /
-
-                    // TODO: Read out nvram plist and populate device tree
-                    char* buffer;
-                    uint64_t len;
-                    if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
+                    retryCount++;
+                    LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
+                    // TODO: Check if / is mounted, and if not, try again untill it is.
+                    if(retryCount < 100)
                     {
-                        // Unable to read in file, continue w/o data
-                        LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
-
-                        self->mSafeToSync = true;
-                        self->registerNVRAM();
+                        timer->setTimeoutMS(100);
                     }
                     else
                     {
-                        // File read in, use it
-                        self->mSafeToSync = false; // don't sinc already read in vars.
-
-                        timer->cancelTimeout();
-                        self->getWorkLoop()->removeEventSource(timer);
-                        timer->release();
-                        self->mTimer = NULL;
-                        
-                        if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
-                        {
-                            char* xml = buffer + strlen(NVRAM_FILE_HEADER);
-                            size_t xmllen = len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
-                            xml[xmllen-1] = 0;
-                            OSObject* nvram = OSUnserializeXML(xml, xmllen);
-                            
-                            if(nvram)
-                            {
-                                OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
-                                //if(data) self->setPropertyTable(data);
-                                if(data) self->copyUnserialzedData(NULL, data);
-                                nvram->release();
-                            }
-                        }
-                        IOFree(buffer, len);
-                        
-                        
                         self->mSafeToSync = true;
                         self->registerNVRAM();
-                        //self->sync();
                     }
-
                 }
-                else /* !root */
+                else
                 {
-                    timer->setTimeoutMS(100);
+                    self->mSafeToSync = false;
+                    
+                    timer->cancelTimeout();
+                    self->getWorkLoop()->removeEventSource(timer);
+                    timer->release();
+                    self->mTimer = NULL;
+                    
+                    if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
+                    {
+                        char* xml = buffer + strlen(NVRAM_FILE_HEADER);
+                        size_t xmllen = len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
+                        xml[xmllen-1] = 0;
+                        OSObject* nvram = OSUnserializeXML(xml, xmllen);
+                        
+                        if(nvram)
+                        {
+                            OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
+                            //if(data) self->setPropertyTable(data);
+                            if(data) self->copyUnserialzedData(NULL, data);
+                            nvram->release();
+                        }
+                    }
+                    IOFree(buffer, len);
+                    
+                    
+                    self->mSafeToSync = true;
+                    self->registerNVRAM();
+                    //self->sync();
                 }
             }
-            else /* !bsd */
+            else
             {
-                timer->setTimeoutMS(100);
+                timer->setTimeoutMS(50);
             }
         }
-        else /* !self */
+        else
         {
             //printf("Self is not of type FileNVRAM.\n");
         }
+        
     }
 }
 
