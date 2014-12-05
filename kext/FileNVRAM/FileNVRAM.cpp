@@ -193,7 +193,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
     
     if(!iter) return;
     
-    LOG(INFO, "Restoring nvram data from file.\n");
+    if(!prefix) LOG(INFO, "Restoring nvram data from file.\n");
     do
     {
         key = (const OSSymbol *)iter->getNextObject();
@@ -229,7 +229,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
             }
         }
     } while(key);
-    LOG(INFO, "nvram data restored.\n");
+    if(!prefix) LOG(INFO, "nvram data restored.\n");
 
     iter->release();
 }
