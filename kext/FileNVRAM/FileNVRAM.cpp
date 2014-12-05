@@ -61,7 +61,6 @@ bool FileNVRAM::start(IOService *provider)
     mLoggingLevel   = NOTICE;        // start with logging disabled, can be update for debug
     mInitComplete   = false;        // Don't resync anything that's already in the file system.
 	mSafeToSync     = false;        // Don't sync untill later
-    mPropertyLock   = NULL;
 
     // We should be root right now... cache this for later.
     mCtx            = vfs_context_current();
