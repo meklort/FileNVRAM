@@ -3,7 +3,7 @@
 //  FileNVRAM
 //
 //  Created by Chris Morton on 1/11/13.
-//  Copyright (c) 2013 xZenue LLC. All rights reserved.
+//  Copyright (c) 2013-2014 xZenue LLC. All rights reserved.
 //
 // This work is licensed under the
 //  Creative Commons Attribution-NonCommercial 3.0 Unported License.
@@ -88,16 +88,16 @@ do {                        \
 class FileNVRAM : public IODTNVRAM
 {
     OSDeclareDefaultStructors(FileNVRAM);
-	
+    
 public:
     virtual bool	start(IOService *provider);
-	virtual void	stop(IOService *provider);
-
+    virtual void	stop(IOService *provider);
+    
     virtual bool    passiveMatch (OSDictionary *matching, bool changesOK);
     
     virtual void    copyEntryProperties(const char* prefix, IORegistryEntry* entry);
     virtual void    copyUnserialzedData(const char* prefix, OSDictionary* dict);
-
+    
     virtual IOReturn syncOFVariables(void);
     virtual bool init(IORegistryEntry *old, const IORegistryPlane *plane);
     
@@ -143,7 +143,7 @@ public:
     virtual bool safeToSync(void);
     
     IOReturn setPowerState ( unsigned long whichState, IOService * whatDevice );
-
+    
     
 private:
     static void timeoutOccurred(OSObject *target, IOTimerEventSource* timer);
@@ -151,11 +151,11 @@ private:
     virtual void registerNVRAM();
     
     virtual void setPath(OSString* path);
-
+    
     virtual OSObject* cast(const OSSymbol* key, OSObject* obj);
     
     static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
-
+    
     
     bool mInitComplete;
     bool mSafeToSync;
@@ -163,7 +163,7 @@ private:
     
     vfs_context_t mCtx;
     
-	OSDictionary * mNvramMissDict;
+    OSDictionary * mNvramMissDict;
     IOCommandGate* mCommandGate;
     OSString*      mFilePath;
     IOTimerEventSource* mTimer;
