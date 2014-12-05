@@ -61,6 +61,7 @@ bool FileNVRAM::start(IOService *provider)
     mLoggingLevel   = NOTICE;        // start with logging disabled, can be update for debug
     mInitComplete   = false;        // Don't resync anything that's already in the file system.
 	mSafeToSync     = false;        // Don't sync untill later
+    mPropertyLock   = NULL;
 
     // We should be root right now... cache this for later.
     mCtx            = vfs_context_current();
@@ -166,7 +167,7 @@ void FileNVRAM::stop(IOService *provider)
     {
         mTimer->cancelTimeout();
         getWorkLoop()->removeEventSource(mTimer);
-        mTimer->release();
+        OSSafeReleaseNULL(mTimer);
     }
     
     if(mCommandGate)
@@ -179,9 +180,8 @@ void FileNVRAM::stop(IOService *provider)
 	
     IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
 	detachFromParent(root, gIODTPlane);
-	
-	LOG(NOTICE, "Stop has passed the detach point.. move along now\n");
-	
+
+    LOG(NOTICE, "Stop has passed the detach point.. move along now\n");
 }
 
 void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
@@ -499,6 +499,21 @@ OSObject * FileNVRAM::getProperty(const char *aKey) const
     
     return theObject;
 }
+
+OSObject * FileNVRAM::copyProperty(const OSSymbol *aKey) const
+{
+    OSObject* prop = getProperty(aKey);
+    if(prop) prop->retain();
+    return prop;
+}
+
+OSObject * FileNVRAM::copyProperty(const char *aKey) const
+{
+    OSObject* prop = getProperty(aKey);
+    if(prop) prop->retain();
+    return prop;
+}
+
 
 bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
 {

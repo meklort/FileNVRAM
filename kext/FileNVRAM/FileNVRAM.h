@@ -107,8 +107,12 @@ public:
     virtual void doSync(void);
     
     virtual bool serializeProperties(OSSerialize *s) const;
+    
     virtual OSObject *getProperty(const OSSymbol *aKey) const;
+    virtual OSObject *copyProperty(const OSSymbol *aKey) const;
     virtual OSObject *getProperty(const char *aKey) const;
+    virtual OSObject *copyProperty(const char *aKey) const;
+    
     virtual bool setProperty(const OSSymbol *aKey, OSObject *anObject);
     virtual void removeProperty(const OSSymbol *aKey);
     virtual IOReturn setProperties(OSObject *properties);
