@@ -193,7 +193,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
     
     if(!iter) return;
     
-    
+    LOG(INFO, "Restoring nvram data from file.\n");
     do
     {
         key = (const OSSymbol *)iter->getNextObject();
@@ -209,14 +209,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
                 
                 snprintf(newKey, size, "%s%s%s", prefix, NVRAM_SEPERATOR, key->getCStringNoCopy());
                 
-                OSSerialize *s = OSSerialize::withCapacity(1000);
-                if(object->serialize(s))
-                {
-                    LOG(INFO, "Restore %s = %s\n", newKey, s->text());
-                }
                 setProperty(OSSymbol::withCString(newKey), object);
-                s->release();
-                
                 
                 IOFree(newKey, size);
             }
@@ -230,19 +223,14 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
                 }
                 else
                 {
-                    OSSerialize *s = OSSerialize::withCapacity(1000);
-                    if(object->serialize(s))
-                    {
-                        LOG(INFO, "Restore %s = %s\n", key->getCStringNoCopy(), s->text());
-                    }
                     setProperty(key, object);
-                    s->release();
                     
                 }
             }
         }
     } while(key);
-    
+    LOG(INFO, "nvram data restored.\n");
+
     iter->release();
 }
 
@@ -790,8 +778,8 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                     else
                     {
                         // File read in, use it
-                        self->mSafeToSync = true;
-                        
+                        self->mSafeToSync = false; // don't sinc already read in vars.
+
                         timer->cancelTimeout();
                         self->getWorkLoop()->removeEventSource(timer);
                         timer->release();
