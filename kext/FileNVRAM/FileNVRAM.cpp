@@ -39,7 +39,7 @@ OSDefineMetaClassAndStructors(FileNVRAM, IODTNVRAM);
 
 void FileNVRAM::setPath(OSString* path)
 {
-	OSSafeReleaseNULL(mFilePath);
+    OSSafeReleaseNULL(mFilePath);
     path->retain();
     LOG(NOTICE, "Setting path to %s\n", path->getCStringNoCopy());
     mFilePath = path;
@@ -48,43 +48,43 @@ void FileNVRAM::setPath(OSString* path)
 bool FileNVRAM::start(IOService *provider)
 {
     bool earlyInit = false;
-
+    
     LOG(NOTICE, "start() called (%d)\n", mInitComplete);
-
+    
     //start is called upon wake for some reason.
     if(mInitComplete)           return true;
     if(!super::start(provider)) return false;
-
+    
     LOG(NOTICE, "start() called (%d)\n", mInitComplete);
-
-	mFilePath		= NULL;			// no know file
+    
+    mFilePath		= NULL;			// no know file
     mLoggingLevel   = NOTICE;        // start with logging disabled, can be update for debug
     mInitComplete   = false;        // Don't resync anything that's already in the file system.
-	mSafeToSync     = false;        // Don't sync untill later
-
+    mSafeToSync     = false;        // Don't sync untill later
+    
     // We should be root right now... cache this for later.
     mCtx            = vfs_context_current();
-
+    
     // Register Power modes
     PMinit();
     registerPowerDriver(this, sPowerStates, sizeof(sPowerStates)/sizeof(IOPMPowerState));
     provider->joinPMtree(this);
     
-	// set a default file path
+    // set a default file path
     setPath(OSString::withCString("/Extra/nvram.plist"));
     
     IORegistryEntry* bootnvram = IORegistryEntry::fromPath(NVRAM_FILE_DT_LOCATION, gIODTPlane);
     IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
-
+    
     // Create the command gate.
     mCommandGate = IOCommandGate::commandGate( this, dispatchCommand );
-	getWorkLoop()->addEventSource( mCommandGate );    
+    getWorkLoop()->addEventSource( mCommandGate );
     
     // Replace the IOService dicionary with an empty one, clean out variables we don't want.
     OSDictionary* dict = OSDictionary::withCapacity(1);
     if (!dict) return false;
     setPropertyTable(dict);
-        
+    
     
     if(bootnvram)
     {
@@ -114,7 +114,7 @@ bool FileNVRAM::start(IOService *provider)
         mSafeToSync = true;
         registerNVRAM();
     }
-
+    
     mInitComplete = true;
     
     return true;
@@ -139,7 +139,7 @@ void FileNVRAM::registerNVRAM()
         handleSetting(str, kOSBooleanTrue, this);
         str->release();
     }
-
+    
     
     // Create entry in device tree -> IODeviceTree:/options
     setName("AppleEFINVRAM");
@@ -155,7 +155,7 @@ void FileNVRAM::registerNVRAM()
         callPlatformFunction(funcSym, false, this, NULL, NULL, NULL);
         funcSym->release();
     }
-   
+    
 }
 
 void FileNVRAM::stop(IOService *provider)
@@ -175,11 +175,11 @@ void FileNVRAM::stop(IOService *provider)
     }
     
     PMstop();
-	LOG(NOTICE, "Stop called, attempting to detachFromParent\n");
-	
+    LOG(NOTICE, "Stop called, attempting to detachFromParent\n");
+    
     IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
-	detachFromParent(root, gIODTPlane);
-
+    detachFromParent(root, gIODTPlane);
+    
     LOG(NOTICE, "Stop has passed the detach point.. move along now\n");
 }
 
@@ -192,7 +192,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
     OSCollectionIterator * 	iter = OSCollectionIterator::withCollection(dict);
     
     if(!iter) return;
-
+    
     
     do
     {
@@ -201,7 +201,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
         {
             const char* name = key->getCStringNoCopy();
             OSObject* object = dict->getObject(name);
-
+            
             if(prefix)
             {
                 size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy());
@@ -237,7 +237,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
                     }
                     setProperty(key, object);
                     s->release();
-
+                    
                 }
             }
         }
@@ -357,7 +357,7 @@ void FileNVRAM::registerNVRAMController(IONVRAMController *nvram)
 void FileNVRAM::sync(void)
 {
     LOG(NOTICE, "sync() called\n");
-	mCommandGate->runCommand( ( void * ) kNVRAMSyncCommand, NULL, NULL, NULL );
+    mCommandGate->runCommand( ( void * ) kNVRAMSyncCommand, NULL, NULL, NULL );
 }
 
 void FileNVRAM::doSync(void)
@@ -368,86 +368,86 @@ void FileNVRAM::doSync(void)
     if(!mSafeToSync) return;
     
     LOG(NOTICE, "doSync() running\n");
-
-	//create the output Dictionary
-	OSDictionary * outputDict = OSDictionary::withCapacity(1);
-	
-	//going to have to spin over ourselves..
-	OSDictionary * inputDict = dictionaryWithProperties();
-	OSCollectionIterator *iter = OSCollectionIterator::withCollection(inputDict);
-	
-	if (iter == 0)
-	{
-		LOG(ERROR, "FAILURE!. No iterator on input dictionary (myself)\n");
-		return;
-	}
-	
-	OSSymbol * key = NULL;
-	OSObject * value = NULL;
     
-	while( (key = OSDynamicCast(OSSymbol,iter->getNextObject())))
-	{
-		
-		//just get the value now anyway
-		value = inputDict->getObject(key);
-		
-		//if the key conmektains :, look to see if it's in the map already, cause we'll add a child pair to it
-		//otherwise we just slam the key/val pair in
-		
-		const char * keyChar = key->getCStringNoCopy();
-		const char * guidValueStr = NULL;
-		if( ( guidValueStr = strstr(keyChar , NVRAM_SEPERATOR)) != NULL)
-		{
-			//we have a GUID child to deal with
-			//now substring out the GUID cause thats going to be a DICT itself on the new outputDict
-			//guidValueStr points to the :
-			size_t guidCutOff = guidValueStr - keyChar;
-			
-			//allocate buffer
-			//we ar ereally accounting for + sizeof('\0')
-			//thats always 1. so 1.
-			char guidStr[guidCutOff+1];
-			strlcpy(guidStr, keyChar, guidCutOff+1);
-			
-			//in theory we have a guid and a value
-			//LOG("sync() -> Located GUIDStr as %s\n",guidStr);
-        
-			//check for ?OSDictionary? from the dictionary
-			OSDictionary * guidDict = OSDynamicCast(OSDictionary, outputDict->getObject(guidStr));
-			if(!guidDict)
-			{
-				guidDict = OSDictionary::withCapacity(1);
-				outputDict->setObject(guidStr,guidDict);
-			}
-			
-			//now we have a dict for the guid no matter what (mapping GUID | DICT)
-			guidDict->setObject(OSString::withCString(guidValueStr+strlen(NVRAM_SEPERATOR)), value);
-		}
-		else
-		{
-			//we are boring.
-			outputDict->setObject(key,value);
-		}
-	}//end while
-		
-	//serialize and write this out
-	OSSerialize *s = OSSerialize::withCapacity(10000);
-	s->addString(NVRAM_FILE_HEADER);
-	outputDict->serialize(s);
-    s->addString(NVRAM_FILE_FOOTER);
-
-	
-	int error =	write_buffer(mFilePath->getCStringNoCopy(), s->text(), s->getLength(), mCtx);
-	if(error)
+    //create the output Dictionary
+    OSDictionary * outputDict = OSDictionary::withCapacity(1);
+    
+    //going to have to spin over ourselves..
+    OSDictionary * inputDict = dictionaryWithProperties();
+    OSCollectionIterator *iter = OSCollectionIterator::withCollection(inputDict);
+    
+    if (iter == 0)
     {
-		LOG(ERROR, "Unable to write to %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
-	}
+        LOG(ERROR, "FAILURE!. No iterator on input dictionary (myself)\n");
+        return;
+    }
     
-	//now free the dictionaries && iter
-	iter->release();
-	outputDict->release();
-	s->release();
-	
+    OSSymbol * key = NULL;
+    OSObject * value = NULL;
+    
+    while( (key = OSDynamicCast(OSSymbol,iter->getNextObject())))
+    {
+        
+        //just get the value now anyway
+        value = inputDict->getObject(key);
+        
+        //if the key conmektains :, look to see if it's in the map already, cause we'll add a child pair to it
+        //otherwise we just slam the key/val pair in
+        
+        const char * keyChar = key->getCStringNoCopy();
+        const char * guidValueStr = NULL;
+        if( ( guidValueStr = strstr(keyChar , NVRAM_SEPERATOR)) != NULL)
+        {
+            //we have a GUID child to deal with
+            //now substring out the GUID cause thats going to be a DICT itself on the new outputDict
+            //guidValueStr points to the :
+            size_t guidCutOff = guidValueStr - keyChar;
+            
+            //allocate buffer
+            //we ar ereally accounting for + sizeof('\0')
+            //thats always 1. so 1.
+            char guidStr[guidCutOff+1];
+            strlcpy(guidStr, keyChar, guidCutOff+1);
+            
+            //in theory we have a guid and a value
+            //LOG("sync() -> Located GUIDStr as %s\n",guidStr);
+            
+            //check for ?OSDictionary? from the dictionary
+            OSDictionary * guidDict = OSDynamicCast(OSDictionary, outputDict->getObject(guidStr));
+            if(!guidDict)
+            {
+                guidDict = OSDictionary::withCapacity(1);
+                outputDict->setObject(guidStr,guidDict);
+            }
+            
+            //now we have a dict for the guid no matter what (mapping GUID | DICT)
+            guidDict->setObject(OSString::withCString(guidValueStr+strlen(NVRAM_SEPERATOR)), value);
+        }
+        else
+        {
+            //we are boring.
+            outputDict->setObject(key,value);
+        }
+    }//end while
+    
+    //serialize and write this out
+    OSSerialize *s = OSSerialize::withCapacity(10000);
+    s->addString(NVRAM_FILE_HEADER);
+    outputDict->serialize(s);
+    s->addString(NVRAM_FILE_FOOTER);
+    
+    
+    int error =	write_buffer(mFilePath->getCStringNoCopy(), s->text(), s->getLength(), mCtx);
+    if(error)
+    {
+        LOG(ERROR, "Unable to write to %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
+    }
+    
+    //now free the dictionaries && iter
+    iter->release();
+    outputDict->release();
+    s->release();
+    
 }
 
 bool FileNVRAM::serializeProperties(OSSerialize *s) const
@@ -475,12 +475,12 @@ OSObject * FileNVRAM::getProperty(const OSSymbol *aKey) const
     }
     else
     {
-
+        
         // Ignore BSD Name for now in logs, it pollutes
         if(!aKey->isEqualTo("BSD Name"))
-		{
-			LOG(INFO, "getProperty(%s) = %p called\n", aKey->getCStringNoCopy(), (void*)NULL);
-		}
+        {
+            LOG(INFO, "getProperty(%s) = %p called\n", aKey->getCStringNoCopy(), (void*)NULL);
+        }
     }
     return value;
 }
@@ -520,7 +520,7 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
     IOReturn     result;
     result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
     if (result != kIOReturnSuccess) return false;
-	
+    
     OSSerialize *s = OSSerialize::withCapacity(1000);
     if(anObject->serialize(s))
     {
@@ -547,7 +547,7 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
         str->release();
         IOFree(newKey, bytes);
     }
-
+    
     bool stat = IOService::setProperty(aKey, cast(aKey, anObject));
     if(mInitComplete) sync();
     return stat;
@@ -559,7 +559,7 @@ void FileNVRAM::removeProperty(const OSSymbol *aKey)
     IOReturn     result;
     result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
     if (result != kIOReturnSuccess) return;
-
+    
     LOG(NOTICE, "removeProperty() called\n");
     
     IOService::removeProperty(aKey);
@@ -610,7 +610,7 @@ IOReturn FileNVRAM::setProperties(OSObject *properties)
             if (tmpStr)
             {
                 result = true; // We are not going to gaurantee sync, this is best effort
-
+                
                 if(safeToSync()) sync();
             }
             else
@@ -675,10 +675,10 @@ IOReturn FileNVRAM::readNVRAMPartition(const OSSymbol *partitionID,
                                        IOByteCount length)
 {
     LOG(NOTICE, "readNVRAMPartition(%s, %zu, %p, %zu) called\n",
-            partitionID->getCStringNoCopy(),
-            (size_t)offset,
-            buffer,
-            (size_t)length);
+        partitionID->getCStringNoCopy(),
+        (size_t)offset,
+        buffer,
+        (size_t)length);
     return kIOReturnNotFound;
 }
 
@@ -687,10 +687,10 @@ IOReturn FileNVRAM::writeNVRAMPartition(const OSSymbol *partitionID,
                                         IOByteCount length)
 {
     LOG(NOTICE, "writeNVRAMPartition(%s, %zu, %p, %zu) called\n",
-            partitionID->getCStringNoCopy(),
-            (size_t)offset,
-            buffer,
-            (size_t)length);
+        partitionID->getCStringNoCopy(),
+        (size_t)offset,
+        buffer,
+        (size_t)length);
     return kIOReturnSuccess;
 }
 
@@ -707,7 +707,7 @@ bool FileNVRAM::safeToSync(void)
 {
     static int count;
     LOG(NOTICE, "safeToSync() called\n");
-
+    
     // Don't sync every time... we already do it so it shouldn't be needed, but just in case.
     count++;
     if(count % 4) return true;
@@ -722,7 +722,7 @@ IOReturn FileNVRAM::dispatchCommand( OSObject* owner,
 {
     FileNVRAM* self = OSDynamicCast(FileNVRAM, owner);
     if(!self) return kIOReturnBadArgument;
-
+    
     size_t command = (size_t) arg0;
     switch (command)
     {
@@ -771,7 +771,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
             {
                 UInt8 mLoggingLevel = self->mLoggingLevel;
                 LOG(NOTICE, "BSD found, syncing\n");
-
+                
                 // TODO: Read out nvram plist and populate device tree
                 char* buffer;
                 uint64_t len;
@@ -798,14 +798,14 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                     self->getWorkLoop()->removeEventSource(timer);
                     timer->release();
                     self->mTimer = NULL;
-
+                    
                     if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
                     {
                         char* xml = buffer + strlen(NVRAM_FILE_HEADER);
                         size_t xmllen = len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
                         xml[xmllen-1] = 0;
                         OSObject* nvram = OSUnserializeXML(xml, xmllen);
-
+                        
                         if(nvram)
                         {
                             OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
@@ -831,7 +831,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
         {
             //printf("Self is not of type FileNVRAM.\n");
         }
-
+        
     }
 }
 
@@ -854,7 +854,7 @@ IOReturn FileNVRAM::setPowerState ( unsigned long whichState, IOService * whatDe
             mSafeToSync = true;
             break;
     }
-
+    
     return kIOPMAckImplied;
 }
 
