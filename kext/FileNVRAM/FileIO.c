@@ -63,7 +63,7 @@ int read_buffer(const char* path, char** buffer, uint64_t* length, vfs_context_t
     else
     {
         if(length) *length = ap.va_data_size;
-        *buffer = IOMalloc(ap.va_data_size);
+        *buffer = IOMalloc((size_t)ap.va_data_size);
         int len = (int)ap.va_data_size;
         
         if ((error = vn_rdwr(UIO_READ, vp, *buffer, len, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(ctx), (int *) 0, vfs_context_proc(ctx))))
