@@ -2,21 +2,21 @@
 # Makefile for FileNVRAM
 #
 
-all: build/Release/FileNVRAM.kext
+all: ${SYMROOT}/FileNVRAM.mkext
 
-dst: ${DSTROOT}/FileNVRAM.mkext
+dst:
 
-
+.PHONY: build/Release/FileNVRAM.kext
 build/Release/FileNVRAM.kext:
 	@xcodebuild
 
-${DSTROOT}/FileNVRAM.mkext: build/Release/FileNVRAM.kext
+${SYMROOT}/FileNVRAM.mkext: build/Release/FileNVRAM.kext
 	@echo "[KEXTCACHE] $@"
 	@kextcache -mkext1 $@ $<
 
 distclean:
-	@echo "[RM] ${DSTROOT}/FileNVRAM.mkext"
-	rm -rf ${DSTROOT}/FileNVRAM.mkext
+	@echo "[RM] ${SYMROOT}/FileNVRAM.mkext"
+	@rm -rf ${SYMROOT}/FileNVRAM.mkext
 
 clean:
 	@xcodebuild clean

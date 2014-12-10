@@ -37,7 +37,7 @@ dst: ${DSTROOT} ${SUBDIRS}
 #	@#rm ${SDKROOT}/docs/html/*.xml ${SDKROOT}/docs/html/*.plist ${SDKROOT}/docs/html/Makefile
 
 
-${SUBDIRS}:
+${SUBDIRS}: ${SYMROOT}
 	@echo ================= make $@ ================
 	@${MAKE} -r -R -C "$@" ${MAKECMDGOALS}	\
 		DSTROOT='${DSTROOT}'		\
@@ -46,6 +46,6 @@ ${SUBDIRS}:
 	
 
 
-${DSTROOT}:
+${DSTROOT} ${SYMROOT}:
 	@echo "[MKDIR] $@"
 	@mkdir -p $@
