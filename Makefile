@@ -23,7 +23,7 @@ all clean distclean: ${SUBDIRS}
 test:
 
 .PHONY: dst
-dst: ${DSTROOT} ${SDKROOT}/makefiles/
+dst: ${DSTROOT}
 	@make sdk
 	@echo "[DST] ${PRODUCT}.${MAJOR}.${MINOR}.${REVISION}.tgz"
 
