@@ -6,3 +6,6 @@ distclean:
 
 clean:
 	xcodebuild clean
+
+all:
+	xcodebuild
