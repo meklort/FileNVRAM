@@ -42,3 +42,8 @@ ${SUBDIRS}:
 	@echo ================= make $@ ================
 	@${MAKE} -r -R -C "$@" ${MAKECMDGOALS}	
 	
+
+
+${DSTROOT}
+	@echo "[MKDIR] $@"
+	@mkdir -p $@
