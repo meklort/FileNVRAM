@@ -20,6 +20,8 @@ module: kext
 
 all clean distclean: ${SUBDIRS}
 
+test:
+
 .PHONY: dst
 dst: ${DSTROOT} ${SDKROOT}/makefiles/
 	@make sdk
