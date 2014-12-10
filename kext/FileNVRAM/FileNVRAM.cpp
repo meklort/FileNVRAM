@@ -802,7 +802,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                             nvram->release();
                         }
                     }
-                    IOFree(buffer, len);
+                    IOFree(buffer, (size_t)len);
                     
                     
                     self->mSafeToSync = true;
