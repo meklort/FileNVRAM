@@ -1,6 +1,9 @@
 FileNVRAM Release Notes
 
 ========= Version 1.1.4 =======
+* Add ability to read NVRAM file from disk if not passed in by bootloader.
+* Add ability to configure kext using the nvram command
+* Add ability to save nvram configuration to nvrma file.
 * Prepare for public release, source code cleanup.
 * Update macros for passing information between module and kext.
 * Add method to enable logging using an nvram variable.
