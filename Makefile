@@ -1,7 +1,12 @@
 #
 # Makefile for FileNVRAM
 #
+
 PRODUCT=FileNVRAM
+
+MAJOR = 1
+MINOR = 1
+REVISION = 4
 
 ROOT = $(abspath $(CURDIR))
 SRCROOT = ${ROOT}/src
@@ -25,7 +30,7 @@ test:
 .PHONY: dst
 dst: ${DSTROOT} ${SUBDIRS}
 	@cp docs/* ${SYMROOT}
-	@echo "[DST] ${PRODUCT}.${MAJOR}.${MINOR}.${REVISION}.tgz"
+	@echo "[DST] ${PRODUCT}-${MAJOR}.${MINOR}.${REVISION}.tgz"
 
 #sdk: ${SUBDIRS} 
 #	@echo "[DOXYGEN] html"
