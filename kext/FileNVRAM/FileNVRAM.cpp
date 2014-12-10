@@ -790,7 +790,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                     if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
                     {
                         char* xml = buffer + strlen(NVRAM_FILE_HEADER);
-                        size_t xmllen = len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
+                        size_t xmllen = (size_t)len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
                         xml[xmllen-1] = 0;
                         OSObject* nvram = OSUnserializeXML(xml, xmllen);
                         
