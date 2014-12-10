@@ -24,6 +24,7 @@ test:
 
 .PHONY: dst
 dst: ${DSTROOT} ${SUBDIRS}
+	@cp docs/* ${SYMROOT}
 	@echo "[DST] ${PRODUCT}.${MAJOR}.${MINOR}.${REVISION}.tgz"
 
 #sdk: ${SUBDIRS} 
