@@ -10,9 +10,9 @@ OBJROOT = $(ROOT)/obj
 SYMROOT = $(ROOT)/sym
 DSTROOT = $(ROOT)/dst
 DOCROOT = $(ROOT)/doc
-SUBDIRS="src"
 
 SUBDIRS = kext 
+
 #module
 module: kext
 
@@ -23,8 +23,7 @@ all clean distclean: ${SUBDIRS}
 test:
 
 .PHONY: dst
-dst: ${DSTROOT}
-	@make sdk
+dst: ${DSTROOT} ${SUBDIRS}
 	@echo "[DST] ${PRODUCT}.${MAJOR}.${MINOR}.${REVISION}.tgz"
 
 #sdk: ${SUBDIRS} 
@@ -40,7 +39,10 @@ dst: ${DSTROOT}
 
 ${SUBDIRS}:
 	@echo ================= make $@ ================
-	@${MAKE} -r -R -C "$@" ${MAKECMDGOALS}	
+	@${MAKE} -r -R -C "$@" ${MAKECMDGOALS}	\
+		DSTROOT='${DSTROOT}'		\
+		SYMROOT='${SYMROOT}'		\
+		DOCROOT='${DOCROOT}'
 	
 
 
