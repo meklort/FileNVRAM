@@ -17,7 +17,7 @@ module: kext
 
 .PHONY: ${SUBDIRS}
 
-all dstclean: ${SUBDIRS}
+all distclean: ${SUBDIRS}
 
 .PHONY: dst
 dst: ${DSTROOT} ${SDKROOT}/makefiles/

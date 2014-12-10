@@ -2,7 +2,7 @@
 # Makefile for FileNVRAM
 #
 
-dstclean:
+distclean:
 
 clean:
 	xcodebuild clean
