@@ -44,6 +44,6 @@ ${SUBDIRS}:
 	
 
 
-${DSTROOT}
+${DSTROOT}:
 	@echo "[MKDIR] $@"
 	@mkdir -p $@
