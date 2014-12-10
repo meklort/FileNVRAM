@@ -72,7 +72,7 @@ int read_buffer(const char* path, char** buffer, uint64_t* length, vfs_context_t
         }
     }
     
-    if ((error = vnode_close(vp, NULL, ctx)))
+    if ((error = vnode_close(vp, 0, ctx)))
     {
         printf("Error closing vnode errno %d\n",error);
     }
