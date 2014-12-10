@@ -12,7 +12,8 @@ DSTROOT = $(ROOT)/dst
 DOCROOT = $(ROOT)/doc
 SUBDIRS="src"
 
-SUBDIRS = kext module
+SUBDIRS = kext 
+#module
 module: kext
 
 .PHONY: ${SUBDIRS}
