@@ -12,7 +12,11 @@ MODULE_OBJS   = FileNVRAM.x86.mach.o kernel_patcher.x86.mach.o
 
 HAS_EMBEDED:=$(shell test -f FileNVRAM.mkext && echo "true")
 
-include ${CHAMELEON}/i386/modules/MakeInc.dir
+override SYMROOT=sym
+override OBJROOT=obj
+override BOOT_ELF=
+
+include chameleon/i386/modules/MakeInc.dir
 
 
 ifeq (${HAS_EMBEDED},true)
