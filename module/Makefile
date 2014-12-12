@@ -35,3 +35,4 @@ endif
 ${MKEXT}.h: ${MKEXT}
 	xxd -i ${MKEXT} > $@
 
+dst:
