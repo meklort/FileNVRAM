@@ -12,7 +12,7 @@ MODULE_OBJS   = FileNVRAM.x86.mach.o kernel_patcher.x86.mach.o
 
 HAS_EMBEDED:=$(shell test -f FileNVRAM.mkext && echo "true")
 
-override SYMROOT=sym
+override SYMROOT=../sym
 override OBJROOT=obj
 override BOOT_ELF=
 
