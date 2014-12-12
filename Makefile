@@ -48,6 +48,7 @@ ${SUBDIRS}: ${SYMROOT}
 	@${MAKE} -r -R -C "$@" ${MAKECMDGOALS}	\
 		DSTROOT='${DSTROOT}'		\
 		SYMROOT='${SYMROOT}'		\
+		OBJROOT='${OBJROOT}'		\
 		DOCROOT='${DOCROOT}'
 	
 
