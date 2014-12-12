@@ -17,12 +17,12 @@
 
 #include "libsa.h"
 #include "libsaio.h"
-#include "bootstruct.h"
+#include <libsaio/bootstruct.h>
 #include "modules.h"
-#include "xml.h"
+#include <libsaio/xml.h>
 #include "string.h"
-#include "smbios_getters.h"
-#include "convert.h"
+#include <libsaio/smbios_getters.h>
+#include <libsaio/convert.h>
 
 #include "kernel_patcher.h"
 
@@ -45,7 +45,7 @@ static EFI_CHAR8* getSmbiosUUID();
 static void InternalreadSMBIOSInfo(SMBEntryPoint *eps);
 static BVRef scanforNVRAM(BVRef chain);
 static void readplist();
-static void getcommandline(char* args, char* args_end)
+static void getcommandline(char* args, char* args_end);
 
 static char* gCommandline;
 static void clearBootArgsHook();
