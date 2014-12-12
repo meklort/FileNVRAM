@@ -16,9 +16,8 @@ SYMROOT = $(ROOT)/sym
 DSTROOT = $(ROOT)/dst
 DOCROOT = $(ROOT)/doc
 
-SUBDIRS = kext 
+SUBDIRS = kext module
 
-#module
 module: kext
 
 .PHONY: ${SUBDIRS}
