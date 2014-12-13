@@ -1,5 +1,5 @@
 #
-# Makefile for FileNVRAM
+# Makefile for FileNVRAM (kext)
 #
 
 all: ${OBJROOT}/FileNVRAM.mkext
