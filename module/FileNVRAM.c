@@ -380,6 +380,10 @@ static void readplist()
 
 void FileNVRAM_hook()
 {
+    bool disable = false;
+    getBoolForKey(BOOT_KEY_NVRAM_DISABLED, &disable, &bootInfo->chameleonConfig);
+    if(disable) return;
+
     const char* uuid = getStringFromUUID(getSmbiosUUID());
     
     Node * nvramNode = DT__FindNode("/chosen/nvram", true);

@@ -1,6 +1,7 @@
 FileNVRAM Release Notes
 
 ========= Version 1.1.4 =======
+* Add ability to disable FileNVRAM module fomr the command line.
 * Add ability to read NVRAM file from disk if not passed in by bootloader.
 * Add ability to configure kext using the nvram command
 * Add ability to save nvram configuration to nvrma file.
