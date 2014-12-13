@@ -36,3 +36,5 @@ ${MKEXT}.h: ${MKEXT}
 	xxd -i ${MKEXT} > $@
 
 dst:
+
+SUBDIRS = chameleon
