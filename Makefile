@@ -31,17 +31,6 @@ dst: ${DSTROOT} ${SUBDIRS}
 	@cp docs/* ${SYMROOT}
 	@echo "[DST] ${PRODUCT}-${MAJOR}.${MINOR}.${REVISION}.tgz"
 
-#sdk: ${SUBDIRS} 
-#	@echo "[DOXYGEN] html"
-#	@${DOXYGEN} Doxyfile > /dev/null
-#	@#echo "[DOXYGEN] docset"
-#	@#make -C ${SDKROOT}/docs/html &> /dev/null
-#	@find ${SDKROOT} -type d -empty -delete
-#	@#rm -rf ${SDKROOT}/docs/*.docset
-#	@#mv ${SDKROOT}/docs/html/*.docset ${SDKROOT}/docs
-#	@#rm ${SDKROOT}/docs/html/*.xml ${SDKROOT}/docs/html/*.plist ${SDKROOT}/docs/html/Makefile
-
-
 ${SUBDIRS}: ${SYMROOT} ${OBJROOT}
 	@echo ================= make $@ ================
 	@${MAKE} -r -R -C "$@" ${MAKECMDGOALS}	\
