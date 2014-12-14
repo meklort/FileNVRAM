@@ -4,7 +4,7 @@ FileNVRAM Release Notes
 * Add ability to disable FileNVRAM module fomr the command line.
 * Add ability to read NVRAM file from disk if not passed in by bootloader.
 * Add ability to configure kext using the nvram command
-* Add ability to save nvram configuration to nvrma file.
+* Add ability to save nvram configuration to nvram file.
 * Prepare for public release, source code cleanup.
 * Update macros for passing information between module and kext.
 * Add method to enable logging using an nvram variable.
