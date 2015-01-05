@@ -332,7 +332,7 @@ static void readplist()
 
 #if HAS_MKEXT
     /* We need to patch the kernel to load up an mkext in the event that the kernel is prelinked. */
-    if(!is_module_loaded("KernelPatcher.dylib")) register_hook_callback("DecodeKernel", &patch_kernel);
+    if(!is_module_loaded("KernelPatcher.dylib", 0)) register_hook_callback("DecodeKernel", &patch_kernel);
 #endif
     
     
