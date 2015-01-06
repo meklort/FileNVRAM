@@ -122,25 +122,6 @@ bool FileNVRAM::start(IOService *provider)
 
 void FileNVRAM::registerNVRAM()
 {
-    // Before we register ourselfs with IOKit, generate any required NVRAM variables.
-    
-    /* Do we need to generate MLB? */
-    if(!getProperty(APPLE_MLB_KEY))
-    {
-        OSString* str = OSString::withCString(NVRAM_GEN_MLB);
-        handleSetting(str, kOSBooleanTrue, this);
-        str->release();
-    }
-    
-    /* Do we need to generate ROM? */
-    if(!getProperty(APPLE_ROM_KEY))
-    {
-        OSString* str = OSString::withCString(NVRAM_GEN_ROM);
-        handleSetting(str, kOSBooleanTrue, this);
-        str->release();
-    }
-    
-    
     // Create entry in device tree -> IODeviceTree:/options
     setName("AppleEFINVRAM");
     setName("options", gIODTPlane);
