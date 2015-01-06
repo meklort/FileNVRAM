@@ -18,8 +18,6 @@
 #define BOOT_KEY_NVRAM_DISABLED		"NoFileNVRAM"
 
 #define FILE_NVRAM_GULD         "D8F0CCF5-580E-4334-87B6-9FBBB831271D"
-#define NVRAM_GEN_MLB           "GenerateMLB"
-#define NVRAM_GEN_ROM           "GenerateROM"
 #define NVRAM_ENABLE_LOG        "EnableLogging"
 #define NVRAM_SET_FILE_PATH     "NVRAMFile"
 
