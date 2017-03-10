@@ -17,13 +17,11 @@
 	<key>CFBundlePackageType</key>
 	<string>KEXT</string>
 	<key>CFBundleShortVersionString</key>
-	<string>6.9.4</string>
+	<string>6.9.5</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>6.9.4</string>
-	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2013 xZenue LLC. All rights reserved.</string>
+	<string>6.9.5</string>
 	<key>IOKitPersonalities</key>
 	<dict>
 		<key>FileNVRAM</key>
@@ -32,27 +30,31 @@
 			<string>com.xZenue.kext.FileNVRAM</string>
 			<key>IOClass</key>
 			<string>AppleNVRAM</string>
-			<key>IOProbeScore</key>
-			<integer>1000</integer>
 			<key>IOMatchCategory</key>
 			<string>AppleEFINVRAM</string>
+			<key>IOProbeScore</key>
+			<integer>1000</integer>
 			<key>IOProviderClass</key>
 			<string>AppleEFIRuntime</string>
 			<key>IOResourceMatch</key>
 			<string>efi-runtime</string>
 		</dict>
 	</dict>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2013-2017 xZenue LLC. All rights reserved.</string>
 	<key>OSBundleLibraries</key>
 	<dict>
-		<key>com.apple.kpi.unsupported</key>
+		<key>com.apple.iokit.IOStorageFamily</key>
+		<string>2.1</string>
+		<key>com.apple.kpi.bsd</key>
 		<string>8.0.0</string>
 		<key>com.apple.kpi.iokit</key>
-		<string>8.0.0</string>
-		<key>com.apple.kpi.bsd</key>
 		<string>8.0.0</string>
 		<key>com.apple.kpi.libkern</key>
 		<string>8.0.0</string>
 		<key>com.apple.kpi.mach</key>
+		<string>8.0.0</string>
+		<key>com.apple.kpi.unsupported</key>
 		<string>8.0.0</string>
 	</dict>
 	<key>OSBundleRequired</key>
