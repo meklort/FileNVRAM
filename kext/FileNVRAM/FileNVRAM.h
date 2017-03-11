@@ -90,64 +90,70 @@ do {                        \
 
 #define super IODTNVRAM
 
+
+#if __cplusplus < 201103L
+/* Define override for backwards compat pre c++11 compilers. */
+#define override
+#endif
+
 class FileNVRAM : public IODTNVRAM
 {
     OSDeclareDefaultStructors(FileNVRAM);
     
 public:
-    virtual bool	start(IOService *provider);
-    virtual void	stop(IOService *provider);
+    virtual bool	start(IOService *provider) override;
+    virtual void	stop(IOService *provider) override;
     
     virtual bool    passiveMatch (OSDictionary *matching, bool changesOK);
     
     virtual void    copyEntryProperties(const char* prefix, IORegistryEntry* entry);
     virtual void    copyUnserialzedData(const char* prefix, OSDictionary* dict);
     
-    virtual IOReturn syncOFVariables(void);
-    virtual bool init(IORegistryEntry *old, const IORegistryPlane *plane);
+    virtual IOReturn syncOFVariables(void) override;
+    virtual bool init(IORegistryEntry *old, const IORegistryPlane *plane) override;
     
-    virtual void registerNVRAMController(IONVRAMController *nvram);
+    virtual void registerNVRAMController(IONVRAMController *nvram) override;
     
-    virtual void sync(void);
+    virtual void sync(void) override;
     virtual void doSync(void);
     
-    virtual bool serializeProperties(OSSerialize *s) const;
+    virtual bool serializeProperties(OSSerialize *s) const override;
     
-    virtual OSObject *getProperty(const OSSymbol *aKey) const;
-    virtual OSObject *copyProperty(const OSSymbol *aKey) const;
-    virtual OSObject *getProperty(const char *aKey) const;
-    virtual OSObject *copyProperty(const char *aKey) const;
+    virtual OSObject *getProperty(const OSSymbol *aKey) const override;
+    virtual OSObject *copyProperty(const OSSymbol *aKey) const override;
+    virtual OSObject *getProperty(const char *aKey) const override;
+    virtual OSObject *copyProperty(const char *aKey) const override;
     
-    virtual bool setProperty(const OSSymbol *aKey, OSObject *anObject);
-    virtual void removeProperty(const OSSymbol *aKey);
-    virtual IOReturn setProperties(OSObject *properties);
+    virtual bool setProperty(const OSSymbol *aKey, OSObject *anObject) override;
+    virtual void removeProperty(const OSSymbol *aKey) override;
+    virtual IOReturn setProperties(OSObject *properties) override;
     
     virtual IOReturn readXPRAM(IOByteCount offset, UInt8 *buffer,
-                               IOByteCount length);
+                               IOByteCount length) override;
     virtual IOReturn writeXPRAM(IOByteCount offset, UInt8 *buffer,
-                                IOByteCount length);
+                                IOByteCount length) override;
     
     virtual IOReturn readNVRAMProperty(IORegistryEntry *entry,
                                        const OSSymbol **name,
-                                       OSData **value);
+                                       OSData **value) override;
     virtual IOReturn writeNVRAMProperty(IORegistryEntry *entry,
                                         const OSSymbol *name,
-                                        OSData *value);
+                                        OSData *value) override;
     
-    virtual OSDictionary *getNVRAMPartitions(void);
+    virtual OSDictionary *getNVRAMPartitions(void) override;
     
     virtual IOReturn readNVRAMPartition(const OSSymbol *partitionID,
                                         IOByteCount offset, UInt8 *buffer,
-                                        IOByteCount length);
+                                        IOByteCount length) override;
     
     virtual IOReturn writeNVRAMPartition(const OSSymbol *partitionID,
                                          IOByteCount offset, UInt8 *buffer,
-                                         IOByteCount length);
+                                         IOByteCount length) override;
     
-    virtual IOByteCount savePanicInfo(UInt8 *buffer, IOByteCount length);
-    virtual bool safeToSync(void);
+    virtual IOByteCount savePanicInfo(UInt8 *buffer, IOByteCount length) override;
+    virtual bool safeToSync(void) override;
     
-    IOReturn setPowerState ( unsigned long whichState, IOService * whatDevice );
+    IOReturn setPowerState ( unsigned long whichState, IOService * whatDevice ) override;
     
     
 private:
@@ -176,6 +182,12 @@ private:
     OSString*      mFilePath;
     IOTimerEventSource* mTimer;
 };
+
+#if __cplusplus < 201103L
+/* Undefine override so it can be used as usual. */
+#undef override
+#endif
+
 
 
 #endif /* FileNVRAM_FileNVRAM_h */
