@@ -10,4 +10,4 @@ matrix:
 
 
 script:
-  xcodebuild -project ${xcode_project} -scheme ${xcode_schema}
+  xcodebuild -project kext/FileNVRAM.xcodeproj -scheme FileNVRAM
