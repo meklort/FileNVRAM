@@ -3,5 +3,11 @@ language: c++
 xcode_project: kext/FileNVRAM.xcodeproj
 xcode_schema: FileNVRAM
 
-os:
-  - osx
+matrix:
+  include:
+    - os: osx
+      osx_image: xcode6.4
+
+
+scritp:
+  xcodebuild -project ${xcode_project} -scheme ${xcode_schema}
