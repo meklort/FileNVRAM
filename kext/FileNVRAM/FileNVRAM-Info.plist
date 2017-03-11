@@ -9,7 +9,7 @@
 	<key>CFBundleIconFile</key>
 	<string></string>
 	<key>CFBundleIdentifier</key>
-	<string>com.xZenue.kext.FileNVRAM</string>
+	<string>${MODULE_NAME}</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -29,7 +29,7 @@
 		<key>FileNVRAM</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>com.xZenue.kext.FileNVRAM</string>
+			<string>${MODULE_NAME}</string>
 			<key>IOClass</key>
 			<string>AppleNVRAM</string>
 			<key>IOProbeScore</key>
