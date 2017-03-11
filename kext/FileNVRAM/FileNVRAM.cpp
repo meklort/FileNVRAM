@@ -424,7 +424,7 @@ void FileNVRAM::doSync(void)
             size_t guidCutOff = guidValueStr - keyChar;
             
             //allocate buffer
-            //we ar ereally accounting for + sizeof('\0')
+            //we are really accounting for + sizeof('\0')
             //thats always 1. so 1.
             char guidStr[guidCutOff+1];
             strlcpy(guidStr, keyChar, guidCutOff+1);
@@ -559,7 +559,6 @@ OSObject * FileNVRAM::copyProperty(const OSSymbol *aKey) const
 
 OSObject * FileNVRAM::copyProperty(const char *aKey) const
 {
-    return super::copyProperty(aKey);
     OSObject* prop = getProperty(aKey);
     if(prop) prop->retain();
     return prop;
