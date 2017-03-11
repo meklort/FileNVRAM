@@ -2,7 +2,7 @@
 = FileNVRAM.dylib =
 ===================
 
-FileNVRAM copyright © 2013-2014 xZenue LLC.
+FileNVRAM copyright © 2013-2017 xZenue LLC.
 FileNVRAM is licensed under the Attribution-NonCommercial 3.0 Unported license.
 	Please see the license file for details
 
@@ -28,4 +28,13 @@ Please report any bugs at https://public.xzenue.com/bugzilla/
 - Reboot
 
 Use the nvram command to manipulate variables
+
+- bootArgs:
+
+“-FileNVRAMro” makes FileNVRAM.kext to be read only. This allow external scripts/Applications to dump the nvram to a custom place (e.g. in the ESP).
+
+“-EnableLogging” enable the debug log of FileNVRAM.kext, disabled by default.
+
+“-NoFileNVRAM” cause the FileNVRAM to do nothing by returning false inside its start() method.
+
 
