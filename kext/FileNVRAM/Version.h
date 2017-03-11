@@ -9,7 +9,6 @@
 #ifndef FileNVRAM_Version_h
 #define FileNVRAM_Version_h
 
-#define FileNVRAM_VERSION "6.9.5"
 #define FileNVRAM_NEWYEAR "2017"
 #define FileNVRAM_COPYRIGHT "FileNVRAM v%s %s, Copyright 2013-%s xZenue LLC. All rights reserved.\n"
 

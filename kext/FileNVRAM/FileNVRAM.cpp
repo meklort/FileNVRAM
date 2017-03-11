@@ -31,7 +31,7 @@ static IOPMPowerState sPowerStates[] = {
     {1, kIOPMPowerOn,  kIOPMPowerOn,  kIOPMPowerOn, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
-static char gPEbuf[256];
+extern kmod_info_t kmod_info;
 /** Private Functions **/
 
 
@@ -49,6 +49,7 @@ void FileNVRAM::setPath(OSString* path)
 
 bool FileNVRAM::start(IOService *provider)
 {
+    char gPEbuf[256];
     mReadOnly      = false;
     bool earlyInit = false;
     
@@ -67,7 +68,7 @@ bool FileNVRAM::start(IOService *provider)
     if (mInitComplete) {
         IOLog(FileNVRAM_COPYRIGHT,
               "awakening",
-              FileNVRAM_VERSION,
+              kmod_info.version,
               FileNVRAM_NEWYEAR);
         return true;
     }
@@ -76,7 +77,7 @@ bool FileNVRAM::start(IOService *provider)
     
     IOLog(FileNVRAM_COPYRIGHT,
           mInitComplete ? "initialized" : "start",
-          FileNVRAM_VERSION,
+          kmod_info.version,
           FileNVRAM_NEWYEAR);
     
     mFilePath		= NULL;			// no know file
