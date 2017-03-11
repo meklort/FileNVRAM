@@ -217,7 +217,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
             
             if(prefix)
             {
-                size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy());
+                size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy()) +1;
                 char* newKey = (char*)IOMalloc(size);
                 
                 snprintf(newKey, size, "%s%s%s", prefix, NVRAM_SEPERATOR, key->getCStringNoCopy());
@@ -266,7 +266,7 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
                 
                 if(prefix)
                 {
-                    size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(name);
+                    size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(name) +1;
                     char* newPrefix = (char*)IOMalloc(size);
                     
                     snprintf(newPrefix, size, "%s%s%s", prefix, NVRAM_SEPERATOR, name);
@@ -305,7 +305,7 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
             
             if(prefix)
             {
-                size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy());
+                size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy()) +1;
                 char* newKey = (char*)IOMalloc(size);
                 
                 snprintf(newKey, size, "%s%s%s", prefix, NVRAM_SEPERATOR, key->getCStringNoCopy());
