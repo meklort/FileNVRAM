@@ -67,7 +67,7 @@ do {                        \
 
 #define FILE_NVRAM_GUID         "D8F0CCF5-580E-4334-87B6-9FBBB831271D"
 
-#define NVRAM_ENABLE_LOG        "EnableLogging"
+#define NVRAM_ENABLE_LOG        "-EnableLogging"
 #define BOOT_KEY_NVRAM_DISABLED "-NoFileNVRAM"
 #define BOOT_KEY_NVRAM_RDONLY   "-FileNVRAMro"
 #define NVRAM_SET_FILE_PATH     "NVRAMFile"

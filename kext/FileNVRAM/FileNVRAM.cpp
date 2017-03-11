@@ -52,6 +52,7 @@ bool FileNVRAM::start(IOService *provider)
     char peBuf[256];
     mReadOnly      = false;
     bool earlyInit = false;
+    bool debug     = false;
     
     if(PE_parse_boot_argn(BOOT_KEY_NVRAM_DISABLED, peBuf, sizeof peBuf))
     {
@@ -64,6 +65,10 @@ bool FileNVRAM::start(IOService *provider)
         mReadOnly = true;
     }
     
+    if(PE_parse_boot_argn(NVRAM_ENABLE_LOG, peBuf, sizeof peBuf))
+    {
+        debug = true;
+    }
     
     //start is called upon wake for some reason.
     if(mInitComplete)
@@ -83,7 +88,7 @@ bool FileNVRAM::start(IOService *provider)
           FileNVRAM_NEWYEAR);
     
     mFilePath		= NULL;			// no know file
-    mLoggingLevel   = NOTICE;        // start with logging disabled, can be update for debug
+    mLoggingLevel   = debug ? NOTICE : DISABLED; // start with logging disabled, can be update for debug
     mInitComplete   = false;        // Don't resync anything that's already in the file system.
     mSafeToSync     = false;        // Don't sync untill later
     
