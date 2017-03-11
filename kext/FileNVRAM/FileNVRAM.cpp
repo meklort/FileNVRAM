@@ -19,6 +19,14 @@
 /** The cpp file is included here to hide symbol names. **/
 #include "Support.cpp"
 
+#include <sys/kauth.h>
+
+extern "C" {
+    int	mac_iokit_check_nvram_delete(kauth_cred_t cred, const char *name);
+    int	mac_iokit_check_nvram_get(kauth_cred_t cred, const char *name);
+    int	mac_iokit_check_nvram_set(kauth_cred_t cred, const char *name, io_object_t value);
+};
+
 
 /** Private Macros **/
 
@@ -464,13 +472,44 @@ void FileNVRAM::doSync(void)
 
 bool FileNVRAM::serializeProperties(OSSerialize *s) const
 {
-    bool result = IOService::serializeProperties(s);
+    bool result = super::serializeProperties(s);
     LOG(NOTICE, "serializeProperties(%p) = %s\n", s, s->text());
     return result;
 }
 
 OSObject * FileNVRAM::getProperty(const OSSymbol *aKey) const
 {
+    IOReturn result;
+    UInt32   variablePerm;
+
+    // Verify permissions, code from IONVRAM.cpp in xnu
+    variablePerm = getOFVariablePerm(aKey);
+    result = IOUserClient::clientHasPrivilege(current_task(), kIONVRAMPrivilege);
+    if(result != kIOReturnSuccess)
+    {
+        if (variablePerm == kOFVariablePermRootOnly)
+        {
+            LOG(INFO, "getProperty(%s) rejected due to variable being root-only.\n", aKey->getCStringNoCopy());
+            return NULL;
+        }
+    }
+
+    if(variablePerm == kOFVariablePermKernelOnly && current_task() != kernel_task)
+    {
+        LOG(INFO, "getProperty(%s) rejected due to variable being kernel-only.\n", aKey->getCStringNoCopy());
+        return NULL;
+    }
+
+    // Check if the MAC framework will allow the cleint to read the variable.
+    if(current_task() != kernel_task &&
+        mac_iokit_check_nvram_get(kauth_cred_get(), aKey->getCStringNoCopy()) != 0)
+    {
+        LOG(INFO, "getProperty(%s) rejected due to MACF.\n", aKey->getCStringNoCopy());
+        return NULL;
+    }
+
+
+    // The client is allowed ot read the variable, continue.
     OSObject* value = IOService::getProperty(aKey);
     if(value)
     {
@@ -520,6 +559,7 @@ OSObject * FileNVRAM::copyProperty(const OSSymbol *aKey) const
 
 OSObject * FileNVRAM::copyProperty(const char *aKey) const
 {
+    return super::copyProperty(aKey);
     OSObject* prop = getProperty(aKey);
     if(prop) prop->retain();
     return prop;
@@ -528,11 +568,41 @@ OSObject * FileNVRAM::copyProperty(const char *aKey) const
 
 bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
 {
-    // Verify permissions.
-    IOReturn     result;
-    result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
-    if(result != kIOReturnSuccess) return false;
+    bool     result;
+    UInt32   propPerm;
+
+    // Verify permissions. Code taken from IONVRAM.cpp
+    propPerm = getOFVariablePerm(aKey);
+    result = IOUserClient::clientHasPrivilege(current_task(), kIONVRAMPrivilege);
+    if(result != kIOReturnSuccess)
+    {
+        if(propPerm != kOFVariablePermUserWrite)
+        {
+            LOG(INFO, "setProperty(%s, (%s)) rejected due to variable being user-read-only.\n", aKey->getCStringNoCopy(), anObject->getMetaClass()->getClassName());
+            return false;
+        }
+    }
+    if(propPerm == kOFVariablePermKernelOnly && current_task() != kernel_task)
+    {
+        LOG(INFO, "setProperty(%s, (%s)) rejected due to variable being kernel-only.\n", aKey->getCStringNoCopy(), anObject->getMetaClass()->getClassName());
+        return false;
+    }
     
+    // Don't allow change of 'aapl,panic-info'.
+    if(aKey->isEqualTo(kIODTNVRAMPanicInfoKey))
+    {
+        LOG(INFO, "setProperty(%s, (%s)) rejected due to panic variable.\n", aKey->getCStringNoCopy(), anObject->getMetaClass()->getClassName());
+        return false;
+    }
+
+    if (current_task() != kernel_task &&
+        mac_iokit_check_nvram_set(kauth_cred_get(), aKey->getCStringNoCopy(), anObject) != 0)
+    {
+        LOG(INFO, "setProperty(%s, (%s)) rejected due to MACF.\n", aKey->getCStringNoCopy(), anObject->getMetaClass()->getClassName());
+        return false;
+    }
+
+    // Client has permision to set propery. Continue.
     OSSerialize *s = OSSerialize::withCapacity(1000);
     if(anObject->serialize(s))
     {
@@ -567,11 +637,41 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
 
 void FileNVRAM::removeProperty(const OSSymbol *aKey)
 {
+    bool     result;
+    UInt32   propPerm;
+
     // Verify permissions.
-    IOReturn     result;
+    propPerm = getOFVariablePerm(aKey);
     result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
-    if(result != kIOReturnSuccess) return;
+    if(result != kIOReturnSuccess)
+    {
+        if (propPerm != kOFVariablePermUserWrite)
+        {
+            LOG(INFO, "removeProperty(%s) rejected due to variable being user-read-only.\n", aKey->getCStringNoCopy());
+            return;
+        }
+    }
+    if (propPerm == kOFVariablePermKernelOnly && current_task() != kernel_task)
+    {
+        LOG(INFO, "removeProperty(%s) rejected due to variable being kerenl-only.\n", aKey->getCStringNoCopy());
+        return;
+    }
+
+    // Don't allow change of 'aapl,panic-info'.
+    if (aKey->isEqualTo(kIODTNVRAMPanicInfoKey))
+    {
+        LOG(INFO, "removeProperty(%s) rejected due to panic variable.\n", aKey->getCStringNoCopy());
+        return;
+    }
     
+    if (current_task() != kernel_task &&
+        mac_iokit_check_nvram_delete(kauth_cred_get(), aKey->getCStringNoCopy()) != 0)
+    {
+        LOG(INFO, "removeProperty(%s) rejected due to MACF.\n", aKey->getCStringNoCopy());
+        return;
+    }
+
+    // The cleint has permission to remove the properly
     LOG(NOTICE, "removeProperty() called\n");
     
     IOService::removeProperty(aKey);
@@ -616,7 +716,7 @@ IOReturn FileNVRAM::setProperties(OSObject *properties)
                 result = false;
             }
         }
-        else if(key->isEqualTo(kIONVRAMSyncNowPropertyKey))
+        else if(key->isEqualTo(kIONVRAMSyncNowPropertyKey) || key->isEqualTo(kIONVRAMForceSyncNowPropertyKey))
         {
             tmpStr = OSDynamicCast(OSString, object);
             if(tmpStr)

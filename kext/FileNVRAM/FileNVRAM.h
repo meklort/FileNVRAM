@@ -50,8 +50,15 @@ do {                        \
 #ifndef kIONVRAMSyncNowPropertyKey
 #define kIONVRAMSyncNowPropertyKey	"IONVRAM-SYNCNOW-PROPERTY"
 #endif
+#ifndef kIONVRAMForceSyncNowPropertyKey
+#define kIONVRAMForceSyncNowPropertyKey		"IONVRAM-FORCESYNCNOW-PROPERTY"
+#endif
 #ifndef kIODTNVRAMPanicInfoKey
 #define kIODTNVRAMPanicInfoKey	 "aapl,panic-info"
+#endif
+
+#ifndef kIONVRAMPrivilege
+#define kIONVRAMPrivilege	kIOClientPrivilegeAdministrator
 #endif
 
 #define private public
