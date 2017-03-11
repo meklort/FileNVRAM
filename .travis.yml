@@ -9,5 +9,5 @@ matrix:
       osx_image: xcode6.4
 
 
-scritp:
+script:
   xcodebuild -project ${xcode_project} -scheme ${xcode_schema}
