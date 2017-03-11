@@ -31,6 +31,7 @@ static IOPMPowerState sPowerStates[] = {
     {1, kIOPMPowerOn,  kIOPMPowerOn,  kIOPMPowerOn, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
+static char gPEbuf[256];
 /** Private Functions **/
 
 
@@ -49,6 +50,11 @@ void FileNVRAM::setPath(OSString* path)
 bool FileNVRAM::start(IOService *provider)
 {
     bool earlyInit = false;
+    
+    if (PE_parse_boot_argn("-NoFileNVRAM", gPEbuf, sizeof gPEbuf))
+    {
+        return false; /* following module disable method */
+    }
     
     //start is called upon wake for some reason.
     if (mInitComplete) {
