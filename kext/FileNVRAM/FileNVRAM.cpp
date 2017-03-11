@@ -49,12 +49,19 @@ void FileNVRAM::setPath(OSString* path)
 
 bool FileNVRAM::start(IOService *provider)
 {
+    readOnly       = false;
     bool earlyInit = false;
     
     if (PE_parse_boot_argn("-NoFileNVRAM", gPEbuf, sizeof gPEbuf))
     {
         return false; /* following module disable method */
     }
+    
+    if (PE_parse_boot_argn("-FileNVRAMro", gPEbuf, sizeof gPEbuf)) /* read only */
+    {
+        readOnly = true;
+    }
+    
     
     //start is called upon wake for some reason.
     if (mInitComplete) {
@@ -105,6 +112,15 @@ bool FileNVRAM::start(IOService *provider)
     {
         copyEntryProperties(NULL, bootnvram);
         bootnvram->detachFromParent(root, gIODTPlane);
+    }
+    
+    if (readOnly) {
+        // we assume that the bootloader has done its job
+        // i.e. populate /chosen/nvram
+        mInitComplete = true;
+        mSafeToSync = true;
+        registerNVRAM();
+        return true;
     }
     else
     {
@@ -348,8 +364,10 @@ void FileNVRAM::doSync(void)
 {
     LOG(NOTICE, "doSync() called\n");
     
-    if(!mFilePath) return;
-    if(!mSafeToSync) return;
+    if (!mFilePath || !mSafeToSync || readOnly) {
+        LOG(NOTICE, "doSync() returning\n");
+        return;
+    }
     
     LOG(NOTICE, "doSync() running\n");
     

@@ -154,7 +154,7 @@ private:
     
     static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
     
-    
+    bool readOnly;
     bool mInitComplete;
     bool mSafeToSync;
     UInt8 mLoggingLevel;
