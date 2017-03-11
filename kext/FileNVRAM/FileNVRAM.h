@@ -71,7 +71,7 @@ do {                        \
 #define BOOT_KEY_NVRAM_DISABLED "-NoFileNVRAM"
 #define BOOT_KEY_NVRAM_RDONLY   "-FileNVRAMro"
 #define NVRAM_SET_FILE_PATH     "NVRAMFile"
-#define FILE_NVRAM_PATH			"/.nvram.plist"
+#define FILE_NVRAM_PATH			"/Extra/nvram.plist"
 
 #define NVRAM_SEPERATOR         ":"
 #define NVRAM_FILE_DT_LOCATION	"/chosen/nvram"
