@@ -2,3 +2,6 @@ osx_image: xcode6.4
 language: c++
 xcode_project: kext/FileNVRAM.xcodeproj
 xcode_schema: FileNVRAM
+
+os:
+  - osx
