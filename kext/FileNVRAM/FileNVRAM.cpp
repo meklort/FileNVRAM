@@ -13,6 +13,7 @@
 
 #include "FileNVRAM.h"
 #include "Support.h"
+#include "Version.h"
 #include <IOKit/IOUserClient.h>
 #include <libkern/c++/OSUnserialize.h>
 /** The cpp file is included here to hide symbol names. **/
@@ -49,13 +50,21 @@ bool FileNVRAM::start(IOService *provider)
 {
     bool earlyInit = false;
     
-    LOG(NOTICE, "start() called (%d)\n", mInitComplete);
-    
     //start is called upon wake for some reason.
-    if(mInitComplete)           return true;
+    if (mInitComplete) {
+        IOLog(FileNVRAM_COPYRIGHT,
+              "awakening",
+              FileNVRAM_VERSION,
+              FileNVRAM_NEWYEAR);
+        return true;
+    }
+
     if(!super::start(provider)) return false;
     
-    LOG(NOTICE, "start() called (%d)\n", mInitComplete);
+    IOLog(FileNVRAM_COPYRIGHT,
+          mInitComplete ? "initialized" : "start",
+          FileNVRAM_VERSION,
+          FileNVRAM_NEWYEAR);
     
     mFilePath		= NULL;			// no know file
     mLoggingLevel   = NOTICE;        // start with logging disabled, can be update for debug
