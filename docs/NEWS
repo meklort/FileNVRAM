@@ -1,7 +1,14 @@
 FileNVRAM Release Notes
 
+========= develop version =======
+* Add ability to disable FileNVRAM.kext from the command line.
+* Add ability to make FileNVRAM.kext read only from the command line.
+* Add ability to enable logging from the command line.
+* Fixed an issue calculating GUID/separator/key size.
+* Safe read/write functions imported from Pike R. Alpha’s fork.
+
 ========= Version 1.1.4 =======
-* Add ability to disable FileNVRAM module fomr the command line.
+* Add ability to disable FileNVRAM module from the command line.
 * Add ability to read NVRAM file from disk if not passed in by bootloader.
 * Add ability to configure kext using the nvram command
 * Add ability to save nvram configuration to nvram file.

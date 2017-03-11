@@ -13,6 +13,7 @@
 
 #include "FileNVRAM.h"
 #include "Support.h"
+#include "Version.h"
 #include <IOKit/IOUserClient.h>
 #include <libkern/c++/OSUnserialize.h>
 /** The cpp file is included here to hide symbol names. **/
@@ -30,6 +31,7 @@ static IOPMPowerState sPowerStates[] = {
     {1, kIOPMPowerOn,  kIOPMPowerOn,  kIOPMPowerOn, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
+extern kmod_info_t kmod_info;
 /** Private Functions **/
 
 
@@ -47,18 +49,46 @@ void FileNVRAM::setPath(OSString* path)
 
 bool FileNVRAM::start(IOService *provider)
 {
+    char peBuf[256];
+    mReadOnly      = false;
     bool earlyInit = false;
+    bool debug     = false;
     
-    LOG(NOTICE, "start() called (%d)\n", mInitComplete);
+    if(PE_parse_boot_argn(BOOT_KEY_NVRAM_DISABLED, peBuf, sizeof peBuf))
+    {
+        return false; /* following module disable method */
+    }
+    
+    if(PE_parse_boot_argn(BOOT_KEY_NVRAM_RDONLY, peBuf, sizeof peBuf))
+    {
+        /* read only */
+        mReadOnly = true;
+    }
+    
+    if(PE_parse_boot_argn(NVRAM_ENABLE_LOG, peBuf, sizeof peBuf))
+    {
+        debug = true;
+    }
     
     //start is called upon wake for some reason.
-    if(mInitComplete)           return true;
+    if(mInitComplete)
+    {
+        IOLog(FileNVRAM_COPYRIGHT,
+              "awakening",
+              kmod_info.version,
+              FileNVRAM_NEWYEAR);
+        return true;
+    }
+
     if(!super::start(provider)) return false;
     
-    LOG(NOTICE, "start() called (%d)\n", mInitComplete);
+    IOLog(FileNVRAM_COPYRIGHT,
+          mInitComplete ? "initialized" : "start",
+          kmod_info.version,
+          FileNVRAM_NEWYEAR);
     
     mFilePath		= NULL;			// no know file
-    mLoggingLevel   = NOTICE;        // start with logging disabled, can be update for debug
+    mLoggingLevel   = debug ? NOTICE : DISABLED; // start with logging disabled, can be update for debug
     mInitComplete   = false;        // Don't resync anything that's already in the file system.
     mSafeToSync     = false;        // Don't sync untill later
     
@@ -71,7 +101,7 @@ bool FileNVRAM::start(IOService *provider)
     provider->joinPMtree(this);
     
     // set a default file path
-    setPath(OSString::withCString("/Extra/nvram.plist"));
+    setPath(OSString::withCString(FILE_NVRAM_PATH));
     
     IORegistryEntry* bootnvram = IORegistryEntry::fromPath(NVRAM_FILE_DT_LOCATION, gIODTPlane);
     IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
@@ -82,7 +112,7 @@ bool FileNVRAM::start(IOService *provider)
     
     // Replace the IOService dicionary with an empty one, clean out variables we don't want.
     OSDictionary* dict = OSDictionary::withCapacity(1);
-    if (!dict) return false;
+    if(!dict) return false;
     setPropertyTable(dict);
     
     
@@ -90,6 +120,16 @@ bool FileNVRAM::start(IOService *provider)
     {
         copyEntryProperties(NULL, bootnvram);
         bootnvram->detachFromParent(root, gIODTPlane);
+    }
+    
+    if(mReadOnly)
+    {
+        // we assume that the bootloader has done its job
+        // i.e. populate /chosen/nvram
+        mInitComplete = true;
+        mSafeToSync = true;
+        registerNVRAM();
+        return true;
     }
     else
     {
@@ -185,7 +225,7 @@ void FileNVRAM::copyUnserialzedData(const char* prefix, OSDictionary* dict)
             
             if(prefix)
             {
-                size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy());
+                size_t size = strlen(prefix) + strlen(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy()) +1;
                 char* newKey = (char*)IOMalloc(size);
                 
                 snprintf(newKey, size, "%s%s%s", prefix, NVRAM_SEPERATOR, key->getCStringNoCopy());
@@ -234,7 +274,7 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
                 
                 if(prefix)
                 {
-                    size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(name);
+                    size_t size = strlen(prefix) + strlen(NVRAM_SEPERATOR) + strlen(name) +1;
                     char* newPrefix = (char*)IOMalloc(size);
                     
                     snprintf(newPrefix, size, "%s%s%s", prefix, NVRAM_SEPERATOR, name);
@@ -259,21 +299,21 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
         
         
         iter = OSCollectionIterator::withCollection(properties);
-        if (iter == 0) return;
+        if(iter == 0) return;
         
-        while (result) {
-            
+        while (result)
+        {
             key = OSDynamicCast(OSSymbol, iter->getNextObject());
-            if (key == 0) break;
+            if(key == 0) break;
             
             if(key->isEqualTo("name")) continue; // Special property in IORegistery, ignore
             
             object = properties->getObject(key);
-            if (object == 0) continue;
+            if(object == 0) continue;
             
             if(prefix)
             {
-                size_t size = strlen(prefix) + sizeof(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy());
+                size_t size = strlen(prefix) + strlen(NVRAM_SEPERATOR) + strlen(key->getCStringNoCopy()) +1;
                 char* newKey = (char*)IOMalloc(size);
                 
                 snprintf(newKey, size, "%s%s%s", prefix, NVRAM_SEPERATOR, key->getCStringNoCopy());
@@ -308,7 +348,7 @@ bool FileNVRAM::passiveMatch (OSDictionary *matching, bool changesOK)
     
     if(str) LOG(NOTICE, "passiveMatch(%s) called\n", str->getCStringNoCopy());
     
-    if (str && str->isEqualTo ("AppleEFINVRAM")) return true;
+    if(str && str->isEqualTo ("AppleEFINVRAM")) return true;
     return super::passiveMatch (matching, changesOK);
 }
 
@@ -333,8 +373,11 @@ void FileNVRAM::doSync(void)
 {
     LOG(NOTICE, "doSync() called\n");
     
-    if(!mFilePath) return;
-    if(!mSafeToSync) return;
+    if(!mFilePath || !mSafeToSync || mReadOnly)
+    {
+        LOG(NOTICE, "doSync() returning\n");
+        return;
+    }
     
     LOG(NOTICE, "doSync() running\n");
     
@@ -345,7 +388,7 @@ void FileNVRAM::doSync(void)
     OSDictionary * inputDict = dictionaryWithProperties();
     OSCollectionIterator *iter = OSCollectionIterator::withCollection(inputDict);
     
-    if (iter == 0)
+    if(iter == 0)
     {
         LOG(ERROR, "FAILURE!. No iterator on input dictionary (myself)\n");
         return;
@@ -406,7 +449,7 @@ void FileNVRAM::doSync(void)
     s->addString(NVRAM_FILE_FOOTER);
     
     
-    int error =	write_buffer(mFilePath->getCStringNoCopy(), s->text(), s->getLength(), mCtx);
+    int error =	write_buffer(s->text());
     if(error)
     {
         LOG(ERROR, "Unable to write to %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
@@ -460,7 +503,7 @@ OSObject * FileNVRAM::getProperty(const char *aKey) const
     OSObject *theObject = 0;
     
     keySymbol = OSSymbol::withCStringNoCopy(aKey);
-    if (keySymbol != 0) {
+    if(keySymbol != 0) {
         theObject = getProperty(keySymbol);
         keySymbol->release();
     }
@@ -488,7 +531,7 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
     // Verify permissions.
     IOReturn     result;
     result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
-    if (result != kIOReturnSuccess) return false;
+    if(result != kIOReturnSuccess) return false;
     
     OSSerialize *s = OSSerialize::withCapacity(1000);
     if(anObject->serialize(s))
@@ -527,7 +570,7 @@ void FileNVRAM::removeProperty(const OSSymbol *aKey)
     // Verify permissions.
     IOReturn     result;
     result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
-    if (result != kIOReturnSuccess) return;
+    if(result != kIOReturnSuccess) return;
     
     LOG(NOTICE, "removeProperty() called\n");
     
@@ -545,23 +588,23 @@ IOReturn FileNVRAM::setProperties(OSObject *properties)
     OSCollectionIterator *iter;
     
     dict = OSDynamicCast(OSDictionary, properties);
-    if (!dict) return kIOReturnBadArgument;
+    if(!dict) return kIOReturnBadArgument;
     
     iter = OSCollectionIterator::withCollection(dict);
-    if (!iter) return kIOReturnBadArgument;
+    if(!iter) return kIOReturnBadArgument;
     
     while (result)
     {
         key = OSDynamicCast(OSSymbol, iter->getNextObject());
-        if (!key) break;
+        if(!key) break;
         
         object = dict->getObject(key);
-        if (!object) continue;
+        if(!object) continue;
         
-        if (key->isEqualTo(kIONVRAMDeletePropertyKey))
+        if(key->isEqualTo(kIONVRAMDeletePropertyKey))
         {
             tmpStr = OSDynamicCast(OSString, object);
-            if (tmpStr)
+            if(tmpStr)
             {
                 key = OSSymbol::withString(tmpStr);
                 removeProperty(key);
@@ -576,7 +619,7 @@ IOReturn FileNVRAM::setProperties(OSObject *properties)
         else if(key->isEqualTo(kIONVRAMSyncNowPropertyKey))
         {
             tmpStr = OSDynamicCast(OSString, object);
-            if (tmpStr)
+            if(tmpStr)
             {
                 result = true; // We are not going to gaurantee sync, this is best effort
                 
@@ -596,7 +639,7 @@ IOReturn FileNVRAM::setProperties(OSObject *properties)
     
     iter->release();
     
-    if (result) return kIOReturnSuccess;
+    if(result) return kIOReturnSuccess;
     else return kIOReturnError;
 }
 
@@ -744,7 +787,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                 // TODO: Read out nvram plist and populate device tree
                 char* buffer;
                 uint64_t len;
-                if(read_buffer(self->mFilePath->getCStringNoCopy(), &buffer, &len, self->mCtx))
+                if(self->read_buffer(&buffer, &len))
                 {
                     retryCount++;
                     LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
@@ -855,4 +898,118 @@ OSObject* FileNVRAM::cast(const OSSymbol* key, OSObject* obj)
         }
     }
     return obj;
+}
+
+IOReturn FileNVRAM::write_buffer(char* buffer)
+{
+    IOReturn error = 0;
+    
+    if(mReadOnly) return error;
+    
+    int length = (int)strlen(buffer);
+    int ares;
+    struct vnode * vp;
+    
+    if(mCtx)
+    {
+        // O_WRONLY
+        if((error = vnode_open(FILE_NVRAM_PATH, (O_WRONLY | O_CREAT | O_TRUNC | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
+        {
+            LOG(ERROR, "error, vnode_open(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
+            
+            return error;
+        }
+        else
+        {
+            if((error = vnode_isreg(vp)) == VREG)
+            {
+                // 10.6 and later
+                if((error = vn_rdwr(UIO_WRITE, vp, buffer, length, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), &ares/*(int *) 0*/, vfs_context_proc(mCtx))))
+                {
+                    LOG(ERROR, "error, vn_rdwr(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
+                }
+                
+                if((error = vnode_close(vp, FWASWRITTEN, mCtx)))
+                {
+                    LOG(ERROR, "error, vnode_close(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
+                }
+            }
+            else
+            {
+                LOG(ERROR, "error, vnode_isreg(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
+            }
+        }
+    }
+    else
+    {
+        LOG(ERROR,  "mCtx == NULL!\n");
+        error = 0xFFFF; // EINVAL;
+    }
+    
+    return error;
+}
+
+IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length)
+{
+    IOReturn error = 0;
+    
+    if(mReadOnly) return error;
+    
+    struct vnode * vp;
+    struct vnode_attr va;
+    
+    if(mCtx)
+    {
+        if((error = vnode_open(mFilePath->getCStringNoCopy(), (O_RDONLY | FREAD | O_NOFOLLOW), S_IRUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
+        {
+            LOG(ERROR, "failed opening vnode at path %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
+            
+            return error;
+        }
+        else
+        {
+            if((error = vnode_isreg(vp)) == VREG)
+            {
+                VATTR_INIT(&va);
+                VATTR_WANTED(&va, va_data_size);	/* size in bytes of the fork managed by current vnode */
+                
+                // Determine size of vnode
+                if((error = vnode_getattr(vp, &va, mCtx)))
+                {
+                    LOG(ERROR, "failed to determine file size of %s, errno %d.\n", mFilePath->getCStringNoCopy(), error);
+                }
+                else
+                {
+                    if(length)
+                    {
+                        *length = va.va_data_size;
+                    }
+                    
+                    *buffer = (char *)IOMalloc((size_t)va.va_data_size);
+                    int len = (int)va.va_data_size;
+                    
+                    if((error = vn_rdwr(UIO_READ, vp, *buffer, len, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), (int *) 0, vfs_context_proc(mCtx))))
+                    {
+                        LOG(ERROR, "error, writing to vnode(%s) failed with error %d!\n", mFilePath->getCStringNoCopy(), error);
+                    }
+                }
+                
+                if((error = vnode_close(vp, 0, mCtx)))
+                {
+                    LOG(ERROR, "error, vnode_close(%s) failed with error %d!\n", mFilePath->getCStringNoCopy(), error);
+                }
+            }
+            else
+            {
+                LOG(ERROR, "error, vnode_isreg(%s) failed with error %d!\n", mFilePath->getCStringNoCopy(), error);
+            }
+        }
+    }
+    else
+    {
+        LOG(ERROR, "mCtx == NULL!\n");
+        error = 0xFFFF; // EINVAL;
+    }
+    
+    return error;
 }

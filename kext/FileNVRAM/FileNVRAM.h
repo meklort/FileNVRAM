@@ -13,6 +13,12 @@
 #define FileNVRAM_FileNVRAM_h
 
 #include <sys/proc.h>
+#include <sys/kernel.h>
+#include <sys/vnode.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/fcntl.h>
+#include <libkern/libkern.h>
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -56,15 +62,16 @@ do {                        \
 #include <IOKit/IOTimerEventSource.h>
 
 
-#include "FileIO.h"
-
 #define APPLE_MLB_KEY           "4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:MLB"
 #define APPLE_ROM_KEY           "4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:ROM"
 
 #define FILE_NVRAM_GUID         "D8F0CCF5-580E-4334-87B6-9FBBB831271D"
 
-#define NVRAM_ENABLE_LOG        "EnableLogging"
+#define NVRAM_ENABLE_LOG        "-EnableLogging"
+#define BOOT_KEY_NVRAM_DISABLED "-NoFileNVRAM"
+#define BOOT_KEY_NVRAM_RDONLY   "-FileNVRAMro"
 #define NVRAM_SET_FILE_PATH     "NVRAMFile"
+#define FILE_NVRAM_PATH			"/Extra/nvram.plist"
 
 #define NVRAM_SEPERATOR         ":"
 #define NVRAM_FILE_DT_LOCATION	"/chosen/nvram"
@@ -154,7 +161,10 @@ private:
     
     static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
     
+    virtual IOReturn write_buffer(char* buffer);
+    virtual IOReturn read_buffer(char** buffer, uint64_t* length);
     
+    bool mReadOnly;
     bool mInitComplete;
     bool mSafeToSync;
     UInt8 mLoggingLevel;
