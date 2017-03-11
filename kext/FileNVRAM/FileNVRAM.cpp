@@ -53,17 +53,16 @@ bool FileNVRAM::start(IOService *provider)
     mReadOnly      = false;
     bool earlyInit = false;
     
-    if(PE_parse_boot_argn("-NoFileNVRAM", PEbuf, sizeof peBuf))
+    if(PE_parse_boot_argn("-NoFileNVRAM", peBuf, sizeof peBuf))
     {
         return false; /* following module disable method */
     }
     
-    if(PE_parse_boot_argn("-FileNVRAMro", PEbuf, sizeof peBuf))
+    if(PE_parse_boot_argn("-FileNVRAMro", peBuf, sizeof peBuf))
     {
         /* read only */
         mReadOnly = true;
     }
-    
     
     //start is called upon wake for some reason.
     if(mInitComplete)
@@ -895,7 +894,7 @@ OSObject* FileNVRAM::cast(const OSSymbol* key, OSObject* obj)
     return obj;
 }
 
-IOReturn FileNVRAM::write_buffer(char* buffer, vfs_context_t ctx)
+IOReturn FileNVRAM::write_buffer(char* buffer)
 {
     IOReturn error = 0;
     
@@ -937,14 +936,14 @@ IOReturn FileNVRAM::write_buffer(char* buffer, vfs_context_t ctx)
     }
     else
     {
-        LOG(ERROR,  "aCtx == NULL!\n");
+        LOG(ERROR,  "ctx == NULL!\n");
         error = 0xFFFF; // EINVAL;
     }
     
     return error;
 }
 
-IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length, vfs_context_t ctx)
+IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length)
 {
     IOReturn error = 0;
     
@@ -1002,7 +1001,7 @@ IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length, vfs_context_t c
     }
     else
     {
-        LOG(ERROR, "aCtx == NULL!\n");
+        LOG(ERROR, "ctx == NULL!\n");
         error = 0xFFFF; // EINVAL;
     }
     

@@ -56,8 +56,6 @@ do {                        \
 #include <IOKit/IOTimerEventSource.h>
 
 
-#include "FileIO.h"
-
 #define APPLE_MLB_KEY           "4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:MLB"
 #define APPLE_ROM_KEY           "4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:ROM"
 
@@ -154,8 +152,8 @@ private:
     
     static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
     
-    virtual IOReturn write_buffer(char* buffer, vfs_context_t ctx);
-    virtual IOReturn read_buffer(char** buffer, uint64_t* length, vfs_context_t ctx);
+    virtual IOReturn write_buffer(char* buffer);
+    virtual IOReturn read_buffer(char** buffer, uint64_t* length);
     
     bool mReadOnly;
     bool mInitComplete;
