@@ -899,7 +899,7 @@ IOReturn FileNVRAM::write_buffer(char* buffer, vfs_context_t ctx)
 {
     IOReturn error = 0;
     
-    if(readOnly) return error;
+    if(mReadOnly) return error;
     
     int length = (int)strlen(buffer);
     int ares;
@@ -948,7 +948,7 @@ IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length, vfs_context_t c
 {
     IOReturn error = 0;
     
-    if(readOnly) return error;
+    if(mReadOnly) return error;
     
     struct vnode * vp;
     struct vnode_attr va;
