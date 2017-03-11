@@ -53,16 +53,17 @@ bool FileNVRAM::start(IOService *provider)
     mReadOnly      = false;
     bool earlyInit = false;
     
-    if(PE_parse_boot_argn("-NoFileNVRAM", peBuf, sizeof peBuf))
+    if(PE_parse_boot_argn(BOOT_KEY_NVRAM_DISABLED, peBuf, sizeof peBuf))
     {
         return false; /* following module disable method */
     }
     
-    if(PE_parse_boot_argn("-FileNVRAMro", peBuf, sizeof peBuf))
+    if(PE_parse_boot_argn(BOOT_KEY_NVRAM_RDONLY, peBuf, sizeof peBuf))
     {
         /* read only */
         mReadOnly = true;
     }
+    
     
     //start is called upon wake for some reason.
     if(mInitComplete)
@@ -95,7 +96,7 @@ bool FileNVRAM::start(IOService *provider)
     provider->joinPMtree(this);
     
     // set a default file path
-    setPath(OSString::withCString("/Extra/nvram.plist"));
+    setPath(OSString::withCString(FILE_NVRAM_PATH));
     
     IORegistryEntry* bootnvram = IORegistryEntry::fromPath(NVRAM_FILE_DT_LOCATION, gIODTPlane);
     IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
@@ -443,7 +444,7 @@ void FileNVRAM::doSync(void)
     s->addString(NVRAM_FILE_FOOTER);
     
     
-    int error =	write_buffer(s->text(), mCtx);
+    int error =	write_buffer(s->text());
     if(error)
     {
         LOG(ERROR, "Unable to write to %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
@@ -781,7 +782,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                 // TODO: Read out nvram plist and populate device tree
                 char* buffer;
                 uint64_t len;
-                if(self->read_buffer(&buffer, &len, self->mCtx))
+                if(self->read_buffer(&buffer, &len))
                 {
                     retryCount++;
                     LOG(ERROR, "Unable to read in nvram data at %s\n", self->mFilePath->getCStringNoCopy());
@@ -904,10 +905,10 @@ IOReturn FileNVRAM::write_buffer(char* buffer)
     int ares;
     struct vnode * vp;
     
-    if(ctx)
+    if(mCtx)
     {
         // O_WRONLY
-        if((error = vnode_open(FILE_NVRAM_PATH, (O_WRONLY | O_CREAT | O_TRUNC | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, ctx)))
+        if((error = vnode_open(FILE_NVRAM_PATH, (O_WRONLY | O_CREAT | O_TRUNC | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
         {
             LOG(ERROR, "error, vnode_open(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
             
@@ -918,12 +919,12 @@ IOReturn FileNVRAM::write_buffer(char* buffer)
             if((error = vnode_isreg(vp)) == VREG)
             {
                 // 10.6 and later
-                if((error = vn_rdwr(UIO_WRITE, vp, buffer, length, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(ctx), &ares/*(int *) 0*/, vfs_context_proc(ctx))))
+                if((error = vn_rdwr(UIO_WRITE, vp, buffer, length, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), &ares/*(int *) 0*/, vfs_context_proc(mCtx))))
                 {
                     LOG(ERROR, "error, vn_rdwr(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
                 }
                 
-                if((error = vnode_close(vp, FWASWRITTEN, ctx)))
+                if((error = vnode_close(vp, FWASWRITTEN, mCtx)))
                 {
                     LOG(ERROR, "error, vnode_close(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
                 }
@@ -936,7 +937,7 @@ IOReturn FileNVRAM::write_buffer(char* buffer)
     }
     else
     {
-        LOG(ERROR,  "ctx == NULL!\n");
+        LOG(ERROR,  "mCtx == NULL!\n");
         error = 0xFFFF; // EINVAL;
     }
     
@@ -952,9 +953,9 @@ IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length)
     struct vnode * vp;
     struct vnode_attr va;
     
-    if(ctx)
+    if(mCtx)
     {
-        if((error = vnode_open(mFilePath->getCStringNoCopy(), (O_RDONLY | FREAD | O_NOFOLLOW), S_IRUSR, VNODE_LOOKUP_NOFOLLOW, &vp, ctx)))
+        if((error = vnode_open(mFilePath->getCStringNoCopy(), (O_RDONLY | FREAD | O_NOFOLLOW), S_IRUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
         {
             LOG(ERROR, "failed opening vnode at path %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
             
@@ -968,7 +969,7 @@ IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length)
                 VATTR_WANTED(&va, va_data_size);	/* size in bytes of the fork managed by current vnode */
                 
                 // Determine size of vnode
-                if((error = vnode_getattr(vp, &va, ctx)))
+                if((error = vnode_getattr(vp, &va, mCtx)))
                 {
                     LOG(ERROR, "failed to determine file size of %s, errno %d.\n", mFilePath->getCStringNoCopy(), error);
                 }
@@ -982,13 +983,13 @@ IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length)
                     *buffer = (char *)IOMalloc((size_t)va.va_data_size);
                     int len = (int)va.va_data_size;
                     
-                    if((error = vn_rdwr(UIO_READ, vp, *buffer, len, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(ctx), (int *) 0, vfs_context_proc(ctx))))
+                    if((error = vn_rdwr(UIO_READ, vp, *buffer, len, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), (int *) 0, vfs_context_proc(mCtx))))
                     {
                         LOG(ERROR, "error, writing to vnode(%s) failed with error %d!\n", mFilePath->getCStringNoCopy(), error);
                     }
                 }
                 
-                if((error = vnode_close(vp, 0, ctx)))
+                if((error = vnode_close(vp, 0, mCtx)))
                 {
                     LOG(ERROR, "error, vnode_close(%s) failed with error %d!\n", mFilePath->getCStringNoCopy(), error);
                 }
@@ -1001,7 +1002,7 @@ IOReturn FileNVRAM::read_buffer(char** buffer, uint64_t* length)
     }
     else
     {
-        LOG(ERROR, "ctx == NULL!\n");
+        LOG(ERROR, "mCtx == NULL!\n");
         error = 0xFFFF; // EINVAL;
     }
     
