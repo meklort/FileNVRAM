@@ -175,7 +175,7 @@ static BVRef scanforNVRAM(BVRef chain)
 {
     // Locate the nvram.plist file that was modified last.
     
-    const char* uuid = getStringFromUUID(getSmbiosUUID());
+    const char* uuid = getStringFromUUID((const uint8_t *)getSmbiosUUID());
 
     // Locate file w/ newest tiemstamp
     BVRef bvr;
@@ -365,7 +365,7 @@ static void readplist()
     
     // We need the platform UUID *early*
     InternalreadSMBIOSInfo(getSmbios(SMBIOS_ORIGINAL));
-    const char* uuid = getStringFromUUID(getSmbiosUUID());
+    const char* uuid = getStringFromUUID((const uint8_t *)getSmbiosUUID());
     
     // By the time we are here, the file system has already been probed, lets fine the nvram plist.
     BVRef bvr = scanforNVRAM(bvChain);
@@ -422,7 +422,7 @@ void FileNVRAM_hook()
     getBoolForKey(BOOT_KEY_NVRAM_DISABLED, &disable, &bootInfo->chameleonConfig);
     if(disable) return;
 
-    const char* uuid = getStringFromUUID(getSmbiosUUID());
+    const char* uuid = getStringFromUUID((const uint8_t *)getSmbiosUUID());
     
     Node * nvramNode = DT__FindNode("/chosen/nvram", true);
     Node * settingsNode = DT__AddChild(nvramNode, FILE_NVRAM_GULD);
