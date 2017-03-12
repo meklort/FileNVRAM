@@ -214,15 +214,17 @@ void processDict(TagPtr dictionary, Node * node)
     
     while(count)
     {
-        int length = 0;
         const char* key = XMLCastString(XMLGetKey(dictionary,count));
 		
         TagPtr entry = XMLGetProperty(dictionary,key);
         
         if(XMLIsData(entry))
         {
-            char* value = XMLCastData(entry, &length);
-            DT__AddProperty(node, key, length, value);
+            int length = 0;
+            int len = 0;
+            char *base64 = XMLCastData(entry, &length);
+            uint8_t *data = (uint8_t *)BASE64Decode(base64, strlen(base64), &len);
+            DT__AddProperty(node, key, len, data);
         }
         else if(XMLIsString(entry))
         {
@@ -322,6 +324,31 @@ static void getcommandline(char* args, char* args_end)
     }
 }
 
+// helper function for xml.c
+static char * srtdelchar(char *buffer, char c)
+{
+    // please use a null terminated buffer
+    if (buffer == NULL) {
+        return NULL;
+    }
+    if (!strlen(buffer)) {
+        return buffer;
+    }
+    char *cleaned = buffer, *f = buffer;
+    
+    for(; *buffer != '\0'; ++buffer)
+    {
+        if(*buffer != c)
+        {
+            *f++ = *buffer;
+        }
+        
+    }
+    *f = '\0';
+    
+    return cleaned;
+}
+
 /**
  ** Main initialization code.
  ** Find and read out the nvram variables.
@@ -359,7 +386,18 @@ static void readplist()
                 
                 if (plistSize && read(fh, plistBase, plistSize) == plistSize)
                 {
-                    XMLParseFile( plistBase, &gPListData );
+                    // cleaning nvram.plist from \n and \t.
+                    // data tag have those bytes after the serialization:
+                    //
+                    //  <key>SystemAudioVolume</key>
+                    //  <data>
+                    //      fw==
+                    //  </data>
+                    //
+                    // but I want it to be: <data>fw==</data>
+                    //
+                    // so some garbage ends up in /chosen/nvram. just remove them!
+                    XMLParseFile(srtdelchar(srtdelchar(plistBase, '\n'), '\t'), &gPListData);
                     if(gPListData)
                     {
                         gNVRAMData = XMLCastDict(XMLGetProperty(gPListData,"NVRAM"));
