@@ -325,7 +325,7 @@ static void getcommandline(char* args, char* args_end)
 }
 
 // helper function for xml.c
-static char * srtdelchar(char *buffer, char c)
+static char * strdelchar(char *buffer, char c)
 {
     // please use a null terminated buffer
     if (buffer == NULL) {
@@ -397,7 +397,7 @@ static void readplist()
                     // but I want it to be: <data>fw==</data>
                     //
                     // so some garbage ends up in /chosen/nvram. just remove them!
-                    XMLParseFile(srtdelchar(srtdelchar(plistBase, '\n'), '\t'), &gPListData);
+                    XMLParseFile(strdelchar(strdelchar(plistBase, '\n'), '\t'), &gPListData);
                     if(gPListData)
                     {
                         gNVRAMData = XMLCastDict(XMLGetProperty(gPListData,"NVRAM"));
