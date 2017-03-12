@@ -74,8 +74,8 @@ bool FileNVRAM::start(IOService *provider)
     if(mInitComplete)
     {
         IOLog(FileNVRAM_COPYRIGHT,
-              "awakening",
               kmod_info.version,
+              "awakening",
               FileNVRAM_NEWYEAR);
         return true;
     }
@@ -83,8 +83,8 @@ bool FileNVRAM::start(IOService *provider)
     if(!super::start(provider)) return false;
     
     IOLog(FileNVRAM_COPYRIGHT,
-          mInitComplete ? "initialized" : "start",
           kmod_info.version,
+          mInitComplete ? "initialized" : "start",
           FileNVRAM_NEWYEAR);
     
     mFilePath		= NULL;			// no know file
