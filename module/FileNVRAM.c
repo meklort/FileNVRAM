@@ -328,10 +328,12 @@ static void getcommandline(char* args, char* args_end)
 static char * strdelchar(char *buffer, char c)
 {
     // please use a null terminated buffer
-    if (buffer == NULL) {
+    if(buffer == NULL)
+    {
         return NULL;
     }
-    if (!strlen(buffer)) {
+    if(!strlen(buffer))
+    {
         return buffer;
     }
     char *cleaned = buffer, *f = buffer;
