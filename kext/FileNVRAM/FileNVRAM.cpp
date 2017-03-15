@@ -133,7 +133,7 @@ bool FileNVRAM::start(IOService *provider)
     }
     else
     {
-        IOTimerEventSource* mTimer = IOTimerEventSource::timerEventSource(this, timeoutOccurred);
+        mTimer = IOTimerEventSource::timerEventSource(this, timeoutOccurred);
         
         if(mTimer)
         {
