@@ -12,6 +12,7 @@
 
 
 #include "FileNVRAM.h"
+#include <libkern/version.h>
 #include "Support.h"
 #include "Version.h"
 #include <IOKit/IOUserClient.h>
@@ -536,6 +537,20 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
     IOReturn     result;
     result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
     if(result != kIOReturnSuccess) return false;
+    
+    if(version_major >= 15) {
+        // Check for SIP configuration variables in 10.11 and later
+        if((strncmp("csr-data", aKey->getCStringNoCopy(), 8) == 0) || (strncmp("csr-active-config", aKey->getCStringNoCopy(), 17) == 0))
+        {
+            // We have a match so first verify the entitlements.
+            if(IOUserClient::copyClientEntitlement(current_task(), "com.apple.private.iokit.nvram-csr") == NULL)
+            {
+                LOG(INFO, "setProperty(%s, (%s) %p) failed (not entitled)\n", aKey->getCStringNoCopy(), anObject->getMetaClass()->getClassName(), anObject);
+                // Not entitled!
+                return false;
+            }
+        }
+    }
     
     OSSerialize *s = OSSerialize::withCapacity(1000);
     if(anObject->serialize(s))
