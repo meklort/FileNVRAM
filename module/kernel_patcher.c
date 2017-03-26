@@ -36,7 +36,7 @@ typedef struct section_t
 /***************************************** Functions *****************************************/
 
 /** section_handler: used by the macho loader to notify us of a section **/
-static void             section_handler(char* base, char* new_base, char* section, char* segment, void* cmd, UInt64 offset, UInt64 address);
+static void section_handler(char* section, char* segment, void* cmd, UInt64 offset, UInt64 address);
 
 /** Determine the type of kernel being loaded / patched **/
 static int              determineKernelArchitecture(void* kernelData);
@@ -75,7 +75,7 @@ void patch_kernel(void* kernelData, void* arg2, void* arg3, void *arg4)
     register_section("__KLD", "__text");
     register_section("__TEXT","__text");
     
-	parse_mach(kernelData, NULL, NULL, &add_symbol, &section_handler);
+	parse_mach(kernelData, NULL, &add_symbol, &section_handler);
     kernelSymbols = moduleSymbols;    // save symbols for future use, if needed
     moduleSymbols = origmoduleSymbols; // restore orig pointer;
     
