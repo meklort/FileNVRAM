@@ -558,6 +558,7 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
         handleSetting(str, anObject, this);
         str->release();
         IOFree(newKey, bytes);
+        return false; // don't set FileNVRAM settings, just apply them
     }
     
     bool stat = IOService::setProperty(aKey, cast(aKey, anObject));
@@ -816,7 +817,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                         char* xml = buffer + strlen(NVRAM_FILE_HEADER);
                         size_t xmllen = (size_t)len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
                         xml[xmllen-1] = 0;
-			OSString *errmsg = 0;
+                        OSString *errmsg = 0;
                         OSObject* nvram = OSUnserializeXML(xml, &errmsg);
                         
                         if(nvram)
