@@ -172,7 +172,7 @@ static int determineKernelArchitecture(void* kernelData)
 /**
  ** Handle callbacks from the macho parser, recording addresses if previously requested
  **/
-static void section_handler(char* base, char* new_base, char* section, char* segment, void* cmd, UInt64 offset, UInt64 address)
+static void section_handler(char* section, char* segment, void* cmd, UInt64 offset, UInt64 address)
 {	
     // Find the section in our list of registered / requested sections to watch...
     section_t *kernelSection = lookup_section(segment, section);
