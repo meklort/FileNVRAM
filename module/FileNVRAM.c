@@ -17,12 +17,13 @@
 
 #include "libsa.h"
 #include "libsaio.h"
-#include <libsaio/bootstruct.h>
+#include "bootstruct.h"
 #include "modules.h"
-#include <libsaio/xml.h>
+#include "xml.h"
 #include "string.h"
-#include <libsaio/smbios_getters.h>
-#include <libsaio/convert.h>
+#include "smbios_getters.h"
+#include "convert.h"
+#include "boot.h" /* to get gBIOSDev */
 
 #include "kernel_patcher.h"
 

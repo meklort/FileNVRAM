@@ -9,8 +9,8 @@
 #ifndef FILENVRAM_H
 #define FILENVRAM_H
 
-#include <libsaio.h>
-#include <libsaio/xml.h>
+#include "libsaio.h"
+#include "xml.h"
 
 TagPtr getNVRAMVariable(char* key);
 void addNVRAMVariable(char* key, TagPtr entry);

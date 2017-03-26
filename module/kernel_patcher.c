@@ -12,7 +12,7 @@
 #include "kernel_patcher.h"
 #include "modules.h"
 #include "sl.h"
-#include <libsaio/bootstruct.h>
+#include "bootstruct.h"
 
 
 /****************************************** Defines ******************************************/
