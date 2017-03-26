@@ -431,18 +431,18 @@ static void readplist()
                     if(gPListData)
                     {
                         gNVRAMData = XMLCastDict(XMLGetProperty(gPListData,"NVRAM"));
-                        
-                        register_hook_callback("DriversLoaded",&FileNVRAM_hook);    // Main code, runs when kernel has begun booting.
-                        register_hook_callback("BootOptions", (void (*)(void *, void *, void *, void *)) &getcommandline);     // Code executed every time the boot options / command line is used.
-                        register_hook_callback("ClearArgs", &clearBootArgsHook);    // Code executed every time the boot arguments are cleared out.
                     }
 
                 }
             }
         }
         free(nvramPath);
-        
     }
+    // hook anyway. We supposed that if no nvram.plist was found is because does not exist,
+    // but let treat the command line arguments/boot options
+    register_hook_callback("DriversLoaded",&FileNVRAM_hook);    // Main code, runs when kernel has begun booting.
+    register_hook_callback("BootOptions", (void (*)(void *, void *, void *, void *)) &getcommandline);     // Code executed every time the boot options / command line is used.
+    register_hook_callback("ClearArgs", &clearBootArgsHook);    // Code executed every time the boot arguments are cleared out.
 }
 
 
