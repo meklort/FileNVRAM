@@ -509,7 +509,7 @@ void FileNVRAM_hook()
                           +1);
             
             if(uuid) sprintf(path, "/Volumes/%s/Extra/nvram.%s.plist", label, uuid);
-            else sprintf(path, "/Volumes/%s/Extra/nvram.plist", label, uuid);
+            else sprintf(path, "/Volumes/%s/Extra/nvram.plist", label);
             DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path), path);
         }
     }
