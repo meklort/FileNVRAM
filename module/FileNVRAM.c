@@ -31,6 +31,30 @@
 #include <FileNVRAM.mkext.h>
 #endif /* HAS_MKEXT */
 
+#if HAS_EMBEDDED_KEXT
+// kext executable/Info.plist to be embedded
+#include "../../../sym/i386/FileNVRAM/FileNVRAMInfo.plist.h"
+#include "../../../sym/i386/FileNVRAM/FileNVRAM.binary.h"
+#if HAS_MKEXT
+#undef HAS_MKEXT /* not both ..in the event HAS_MKEXT is defined for some reason */
+#endif
+
+struct DriverInfo
+{
+    char *plistAddr;
+    long plistLength;
+    void *executableAddr;
+    long executableLength;
+    void *bundlePathAddr;
+    long bundlePathLength;
+};
+typedef struct DriverInfo DriverInfo, *DriverInfoPtr;
+
+static void loadEmbeddedExtension(void* arg1,
+                                  void* arg2,
+                                  void* arg3,
+                                  void* arg4);
+#endif /* HAS_EMBEDDED_KEXT */
 
 extern void addBootArg(const char * argStr);
 
@@ -363,7 +387,11 @@ static void readplist()
     /* We need to patch the kernel to load up an mkext in the event that the kernel is prelinked. */
     if(!is_module_loaded("KernelPatcher.dylib", 0)) register_hook_callback("DecodeKernel", &patch_kernel);
 #endif
-    
+
+#if HAS_EMBEDDED_KEXT
+    /* let chameleon to load this kext */
+    register_hook_callback("DriversLoaded", &loadEmbeddedExtension);
+#endif
     
     // We need the platform UUID *early*
     InternalreadSMBIOSInfo(getSmbios(SMBIOS_ORIGINAL));
@@ -476,6 +504,13 @@ void FileNVRAM_hook()
 #if HAS_MKEXT
     addMKext(FileNVRAM_mkext, FileNVRAM_mkext_len);
 #endif
+    
+#if HAS_EMBEDDED_KEXT
+    loadEmbeddedExtension(NULL,
+                          NULL,
+                          NULL,
+                          NULL);
+#endif
 }
 
 #if HAS_MKEXT
@@ -513,5 +548,71 @@ static bool addMKext(void* binary, unsigned long len)
                         kBootDriverTypeMKEXT);
     
     return true;
+}
+#endif
+
+#if HAS_EMBEDDED_KEXT
+/*
+ Note: FileNVRAM has the OSBundleRequired set to "Root", to be tested it in Safe Boot..
+ */
+void loadEmbeddedExtension(void* arg1,
+                           void* arg2,
+                           void* arg3,
+                           void* arg4)
+{
+    TagPtr plistPtr, prop;
+    DriverInfoPtr driver;
+    char segName[32];
+    long driverAddr, driverLength, fakeBundlePathLength;
+    char *bundlePath = NULL, *executableName;
+    
+    void *executableAddr            = (void *)FileNVRAM_binary;
+    void *plistAddr                 = (void *)FileNVRAMInfo_plist;
+    unsigned long  executableLength = (unsigned long)FileNVRAM_binary_len;
+    long plistLength                = (long)FileNVRAMInfo_plist_len;
+    
+    ThinFatFile(&executableAddr, &executableLength);
+    
+    XMLParseFile(plistAddr, &plistPtr);
+    
+    prop = XMLGetProperty(plistPtr, kPropCFBundleExecutable);
+    
+    if(prop != 0)
+    {
+        executableName = prop->string;
+        fakeBundlePathLength = strlen("/System/Library/Extensions/.kext") + strlen(executableName) +1;
+        bundlePath = malloc(fakeBundlePathLength);
+        snprintf(bundlePath, fakeBundlePathLength, "%s/%s.kext", "/System/Library/Extensions", executableName);
+        
+        driverLength = sizeof(DriverInfo) + plistLength + executableLength + fakeBundlePathLength;
+        driverAddr = AllocateKernelMemory(driverLength);
+        
+        // Set up the DriverInfo.
+        driver = (DriverInfoPtr)driverAddr;
+        driver->executableLength = executableLength;
+        driver->plistAddr = (char *)(driverAddr + sizeof(DriverInfo));
+        driver->plistLength = plistLength;
+        
+        driver->executableAddr = (void *)(driverAddr + sizeof(DriverInfo) + plistLength);
+        driver->executableLength = executableLength;
+        
+        driver->bundlePathAddr = (void *)(driverAddr + sizeof(DriverInfo) +
+                                          plistLength + driver->executableLength);
+        
+        driver->bundlePathLength = fakeBundlePathLength;
+        
+        // Save the plist and bundle.
+        strlcpy(driver->plistAddr, plistAddr, driver->plistLength);
+        
+        memcpy(driver->executableAddr, executableAddr, executableLength);
+        
+        strlcpy(driver->bundlePathAddr, bundlePath, fakeBundlePathLength);
+        
+        // Add an entry to the memory map.
+        snprintf(segName, sizeof(segName), "Driver-%lx", (unsigned long)driver);
+        AllocateMemoryRange(segName, driverAddr, driverLength, kBootDriverTypeKEXT);
+    }
+    
+    if(bundlePath) free(bundlePath);
 }
 #endif
