@@ -403,7 +403,7 @@ static void readplist()
     /** Load Dictionary if possible **/
     if(bvr)
     {
-        char* nvramPath = malloc(sizeof("hd(%d,%d)/Extra/nvram.plist") + (uuid ? strlen(uuid)  + 2 : 0));
+        nvramPath = malloc(strlen("hd(%d,%d)/Extra/nvram.plist") + (uuid ? (strlen(uuid) +2) : 0) +1);
         if(!uuid) sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.plist", BIOS_DEV_UNIT(bvr), bvr->part_no);
         else sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.%s.plist", BIOS_DEV_UNIT(bvr), bvr->part_no, uuid);
 
@@ -503,10 +503,14 @@ void FileNVRAM_hook()
         if(bvr->description)
         {
             bvr->description(bvr, label, sizeof(label)-1);
-            path = malloc(sizeof("/Volumes/%s/Extra/nvram..plist") + strlen(label));
+            path = malloc(strlen("/Volumes/%s/Extra/nvram.plist") +
+                          strlen(label) +
+                          (uuid ? (strlen(uuid) +2) : 0)
+                          +1);
+            
             if(uuid) sprintf(path, "/Volumes/%s/Extra/nvram.%s.plist", label, uuid);
             else sprintf(path, "/Volumes/%s/Extra/nvram.plist", label, uuid);
-            DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path)+1, path);
+            DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path), path);
         }
     }
     else
@@ -514,10 +518,10 @@ void FileNVRAM_hook()
         if(!uuid) path = "/Extra/nvram.plist";
         else
         {
-            path = malloc(sizeof("/Extra/nvram..plist") + strlen(uuid));
+            path = malloc(strlen("/Extra/nvram..plist") + strlen(uuid) +1);
             sprintf(path, "/Extra/nvram.%s.plist", uuid);
         }
-        DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path)+1, path);
+        DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path), path);
     }
     
 #if HAS_MKEXT
