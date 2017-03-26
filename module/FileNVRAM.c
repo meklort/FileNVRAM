@@ -406,6 +406,8 @@ static void readplist()
         char* nvramPath = malloc(sizeof("hd(%d,%d)/Extra/nvram.plist") + (uuid ? strlen(uuid)  + 2 : 0));
         if(!uuid) sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.plist", BIOS_DEV_UNIT(bvr), bvr->part_no);
         else sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.%s.plist", BIOS_DEV_UNIT(bvr), bvr->part_no, uuid);
+
+        verbose("\tloading %s: ", nvramPath);
         int fh = open(nvramPath, 0);
         if(fh >= 0)
         {
@@ -431,12 +433,29 @@ static void readplist()
                     if(gPListData)
                     {
                         gNVRAMData = XMLCastDict(XMLGetProperty(gPListData,"NVRAM"));
+                        verbose("success.\n");
                     }
-
+                    else
+                    {
+                        verbose("error parsing file.\n");
+                    }
+                }
+                else
+                {
+                    verbose("reading failed.\n");
                 }
             }
+            else
+            {
+                verbose("empty file.\n");
+            }
+        }
+        else
+        {
+            verbose("failed to open file.\n");
         }
         free(nvramPath);
+        
     }
     // hook anyway. We supposed that if no nvram.plist was found is because does not exist,
     // but let treat the command line arguments/boot options
