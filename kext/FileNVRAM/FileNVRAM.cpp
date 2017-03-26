@@ -120,13 +120,13 @@ bool FileNVRAM::start(IOService *provider)
     {
         copyEntryProperties(NULL, bootnvram);
         bootnvram->detachFromParent(root, gIODTPlane);
+        registerNVRAM();
     }
     
     if(mReadOnly)
     {
         // we assume that the bootloader has done its job
         // i.e. populate /chosen/nvram
-        mInitComplete = true;
         mSafeToSync = true;
         registerNVRAM();
         return true;
@@ -155,13 +155,17 @@ bool FileNVRAM::start(IOService *provider)
         registerNVRAM();
     }
     
-    mInitComplete = true;
-    
     return true;
 }
 
 void FileNVRAM::registerNVRAM()
 {
+    if(mInitComplete)
+    {
+        return;
+    }
+    mInitComplete = true;
+    
     // Create entry in device tree -> IODeviceTree:/options
     setName("AppleEFINVRAM");
     setName("options", gIODTPlane);
