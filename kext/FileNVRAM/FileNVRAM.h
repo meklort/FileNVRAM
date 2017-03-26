@@ -167,7 +167,7 @@ private:
     
     static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
     
-    virtual IOReturn write_buffer(char* buffer);
+    virtual IOReturn write_buffer(char* buffer, int length);
     virtual IOReturn read_buffer(char** buffer, uint64_t* length);
     
     bool mReadOnly;

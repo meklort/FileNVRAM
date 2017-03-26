@@ -449,7 +449,7 @@ void FileNVRAM::doSync(void)
     s->addString(NVRAM_FILE_FOOTER);
     
     
-    int error =	write_buffer(s->text());
+    int error =	write_buffer(s->text(), s->getLength());
     if(error)
     {
         LOG(ERROR, "Unable to write to %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
@@ -900,20 +900,17 @@ OSObject* FileNVRAM::cast(const OSSymbol* key, OSObject* obj)
     return obj;
 }
 
-IOReturn FileNVRAM::write_buffer(char* buffer)
+IOReturn FileNVRAM::write_buffer(char* buffer, int length)
 {
     IOReturn error = 0;
     
     if(mReadOnly) return error;
-    
-    int length = (int)strlen(buffer);
-    int ares;
+
     struct vnode * vp;
     
     if(mCtx)
     {
-        // O_WRONLY
-        if((error = vnode_open(FILE_NVRAM_PATH, (O_WRONLY | O_CREAT | O_TRUNC | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
+        if((error = vnode_open(FILE_NVRAM_PATH, (O_TRUNC | O_CREAT | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
         {
             LOG(ERROR, "error, vnode_open(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
             
@@ -923,8 +920,7 @@ IOReturn FileNVRAM::write_buffer(char* buffer)
         {
             if((error = vnode_isreg(vp)) == VREG)
             {
-                // 10.6 and later
-                if((error = vn_rdwr(UIO_WRITE, vp, buffer, length, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), &ares/*(int *) 0*/, vfs_context_proc(mCtx))))
+                if((error = vn_rdwr(UIO_WRITE, vp, (caddr_t)buffer, length, (off_t)0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), (int *) 0, vfs_context_proc(mCtx))))
                 {
                     LOG(ERROR, "error, vn_rdwr(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
                 }
