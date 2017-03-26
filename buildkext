@@ -1,0 +1,46 @@
+#!/bin/bash
+
+mydir="$(cd "$(dirname "$BASH_SOURCE")"; pwd)"
+projpath=""
+SYM_PATH="$(dirname $(dirname $(dirname "${mydir}")))/sym"
+CLANG_VER=$(clang --version | grep -o 'version.*' | awk '{print $2}' | grep -o '^[^.]*')
+USE_ROOT_DIR=
+
+if [[ -z "${1}" ]]; then
+    exit 0
+fi
+
+if [[ -n "${3}" ]] && [[ "${3}" == "1" ]]; then
+    USE_ROOT_DIR="GCC_PREPROCESSOR_DEFINITIONS=USE_ROOT_DIR=1"
+fi
+
+mkdir -p "${1}"
+
+if [[ -d "${SYM_PATH}/i386/FileNVRAM" ]]; then
+    if [ "${CLANG_VER}" -gt "4" ]; then
+        projpath="${mydir}/kext/FileNVRAM_XCODE5.xcodeproj"
+    else
+        projpath="${mydir}/kext/FileNVRAM.xcodeproj"
+    fi
+    xcodebuild -project "${projpath}" -configuration Release \
+    CONFIGURATION_BUILD_DIR="${1}" SYMROOT="${1}"/Build DSTROOT="${1}"/Build ${USE_ROOT_DIR}
+
+    cp -R "${SYM_PATH}"/i386/FileNVRAM/FileNVRAM.kext/Contents/Info.plist "${SYM_PATH}"/i386/FileNVRAM/FileNVRAMInfo.plist
+    cp -R "${SYM_PATH}"/i386/FileNVRAM/FileNVRAM.kext/Contents/MacOS/FileNVRAM "${SYM_PATH}"/i386/FileNVRAM/FileNVRAM.binary
+
+    cd "${SYM_PATH}"/i386/FileNVRAM
+    xxd -i FileNVRAMInfo.plist > FileNVRAMInfo.plist.h
+    xxd -i FileNVRAM.binary > FileNVRAM.binary.h
+fi
+
+if [[ -n "${2}" ]] && [[ "${2}" == "1" ]]; then
+    if [[ -d "${SYM_PATH}/i386/FileNVRAM/FileNVRAM.kext" ]]; then
+        cd "${mydir}"
+        printf "\033[1;31mWARNING: building an mkext arvive require root privileges,\033[0m\n"
+        printf "\033[1;31m         type your password in the alert window..\033[0m\n"
+        osascript -e "do shell script \"./makemkext.sh\" with administrator privileges"
+    fi
+fi
+
+
+

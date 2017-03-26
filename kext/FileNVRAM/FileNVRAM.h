@@ -71,7 +71,14 @@ do {                        \
 #define BOOT_KEY_NVRAM_DISABLED "-NoFileNVRAM"
 #define BOOT_KEY_NVRAM_RDONLY   "-FileNVRAMro"
 #define NVRAM_SET_FILE_PATH     "NVRAMFile"
+
+#ifdef USE_ROOT_DIR
+#define FILE_NVRAM_PATH			"/.nvram.plist"
+#warning /.nvram.plist defined as default path
+#else
 #define FILE_NVRAM_PATH			"/Extra/nvram.plist"
+#warning /Extra/nvram.plist defined as default path
+#endif
 
 #define NVRAM_SEPERATOR         ":"
 #define NVRAM_FILE_DT_LOCATION	"/chosen/nvram"
@@ -167,7 +174,7 @@ private:
     
     static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
     
-    virtual IOReturn write_buffer(char* buffer);
+    virtual IOReturn write_buffer(char* buffer, int length);
     virtual IOReturn read_buffer(char** buffer, uint64_t* length);
     
     bool mReadOnly;

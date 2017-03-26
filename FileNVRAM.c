@@ -17,12 +17,13 @@
 
 #include "libsa.h"
 #include "libsaio.h"
-#include <libsaio/bootstruct.h>
+#include "bootstruct.h"
 #include "modules.h"
-#include <libsaio/xml.h>
+#include "xml.h"
 #include "string.h"
-#include <libsaio/smbios_getters.h>
-#include <libsaio/convert.h>
+#include "smbios_getters.h"
+#include "convert.h"
+#include "boot.h" /* to get gBIOSDev */
 
 #include "kernel_patcher.h"
 
@@ -31,6 +32,30 @@
 #include <FileNVRAM.mkext.h>
 #endif /* HAS_MKEXT */
 
+#if HAS_EMBEDDED_KEXT
+// kext executable/Info.plist to be embedded
+#include "../../../sym/i386/FileNVRAM/FileNVRAMInfo.plist.h"
+#include "../../../sym/i386/FileNVRAM/FileNVRAM.binary.h"
+#if HAS_MKEXT
+#undef HAS_MKEXT /* not both ..in the event HAS_MKEXT is defined for some reason */
+#endif
+
+struct DriverInfo
+{
+    char *plistAddr;
+    long plistLength;
+    void *executableAddr;
+    long executableLength;
+    void *bundlePathAddr;
+    long bundlePathLength;
+};
+typedef struct DriverInfo DriverInfo, *DriverInfoPtr;
+
+static void loadEmbeddedExtension(void* arg1,
+                                  void* arg2,
+                                  void* arg3,
+                                  void* arg4);
+#endif /* HAS_EMBEDDED_KEXT */
 
 extern void addBootArg(const char * argStr);
 
@@ -43,13 +68,14 @@ static void FileNVRAM_hook();
 static void processDict(TagPtr tag, Node* node);
 static EFI_CHAR8* getSmbiosUUID();
 static void InternalreadSMBIOSInfo(SMBEntryPoint *eps);
-static BVRef scanforNVRAM(BVRef chain);
+static BVRef scanforNVRAM(int hdNum);
 static void readplist();
 static void getcommandline(char* args, char* args_end);
-
-static char* gCommandline;
 static void clearBootArgsHook();
 
+static char*  gCommandline;
+static bool   gOldPath = false;
+static BVRef  gbvr;
 static TagPtr gPListData;
 static TagPtr gNVRAMData;
 
@@ -171,35 +197,86 @@ static void InternalreadSMBIOSInfo(SMBEntryPoint *eps)
 	}
 }
 
-static BVRef scanforNVRAM(BVRef chain)
+static BVRef scanforNVRAM(int hdNum)
 {
+    verbose("FileNVRAM.dylib, scanning for nvram file:\n");
     // Locate the nvram.plist file that was modified last.
     
-    const char* uuid = getStringFromUUID(getSmbiosUUID());
-
+    const char* uuid = getStringFromUUID((const uint8_t *)getSmbiosUUID());
+    
+    // get hd count
+    int deviceCount = 0;
+    BVRef chain = newFilteredBVChain(0, hdNum, 0, 0, &deviceCount);
+    
     // Locate file w/ newest tiemstamp
     BVRef bvr;
     char  dirSpec[512], fileSpec[512];
     int   ret;
-    long  flags, time;
-    
-    long newestTime = -1;
+    long  flags;
+    u_int32_t time, newestTime;
     BVRef result;
     
     result = NULL;
+    char label[128];
     for (bvr = chain; bvr; bvr = bvr->next)
     {
-        sprintf(dirSpec, "hd(%d,%d)/Extra/", BIOS_DEV_UNIT(bvr), bvr->part_no);
-        if(!uuid) strcpy(fileSpec, "nvram.plist");
-        else sprintf(fileSpec, "nvram.%s.plist", uuid);
+        time = -1; ret = -1;
+        verbose("\tscanning hd(%d,%d)/\n", BIOS_DEV_UNIT(bvr), bvr->part_no);
+        sprintf(dirSpec, "hd(%d,%d)/", BIOS_DEV_UNIT(bvr), bvr->part_no);
+        strcpy(fileSpec, ".nvram.plist");
         ret = GetFileInfo(dirSpec, fileSpec, &flags, &time);
-        if (!ret)
+        if (ret == 0)
         {
             if(time > newestTime)
             {
-                newestTime = time;
+                if(bvr->description)
+                {
+                    bvr->description(bvr, label, sizeof(label)-1);
+                    verbose("\tfound nvram.plist at /Volumes/%s [hd(%d,%d)]\n",
+                            label,
+                            BIOS_DEV_UNIT(bvr),
+                            bvr->part_no);
+                }
+                
+                newestTime = (u_int32_t)time;
                 result = bvr;
             }
+        }
+    }
+    // no file? look at the old path (/Extra/)
+    if(!result)
+    {
+        verbose("\tNo nvram file was found, looking inside the Extra folder(s)..\n");
+        for (bvr = chain; bvr; bvr = bvr->next)
+        {
+            time = -1; ret = -1;
+            verbose("\tscanning hd(%d,%d)/Extra\n", BIOS_DEV_UNIT(bvr), bvr->part_no);
+            sprintf(dirSpec, "hd(%d,%d)/Extra/", BIOS_DEV_UNIT(bvr), bvr->part_no);
+            if(!uuid) strcpy(fileSpec, "nvram.plist");
+            else sprintf(fileSpec, "nvram.%s.plist", uuid);
+            ret = GetFileInfo(dirSpec, fileSpec, &flags, &time);
+            if (ret == 0)
+            {
+                if(time > newestTime)
+                {
+                    if(bvr->description)
+                    {
+                        bvr->description(bvr, label, sizeof(label)-1);
+                        verbose("\tfound %s at /Volumes/%s/Extra [hd(%d,%d)]\n",
+                                fileSpec,
+                                label,
+                                BIOS_DEV_UNIT(bvr),
+                                bvr->part_no);
+                    }
+                    
+                    newestTime = (u_int32_t)time;
+                    result = bvr;
+                }
+            }
+        }
+        if(result)
+        {
+            gOldPath = true;
         }
     }
     
@@ -214,15 +291,17 @@ void processDict(TagPtr dictionary, Node * node)
     
     while(count)
     {
-        int length = 0;
         const char* key = XMLCastString(XMLGetKey(dictionary,count));
 		
         TagPtr entry = XMLGetProperty(dictionary,key);
         
         if(XMLIsData(entry))
         {
-            char* value = XMLCastData(entry, &length);
-            DT__AddProperty(node, key, length, value);
+            int length = 0;
+            int len = 0;
+            char *base64 = XMLCastData(entry, &length);
+            uint8_t *data = (uint8_t *)BASE64Decode(base64, strlen(base64), &len);
+            DT__AddProperty(node, key, len, data);
         }
         else if(XMLIsString(entry))
         {
@@ -322,33 +401,76 @@ static void getcommandline(char* args, char* args_end)
     }
 }
 
+// helper function for xml.c
+static char * strdelchar(char *buffer, char c)
+{
+    // please use a null terminated buffer
+    if(buffer == NULL)
+    {
+        return NULL;
+    }
+    if(!strlen(buffer))
+    {
+        return buffer;
+    }
+    char *cleaned = buffer, *f = buffer;
+    
+    for(; *buffer != '\0'; ++buffer)
+    {
+        if(*buffer != c)
+        {
+            *f++ = *buffer;
+        }
+        
+    }
+    *f = '\0';
+    
+    return cleaned;
+}
+
 /**
  ** Main initialization code.
  ** Find and read out the nvram variables.
  **/
 static void readplist()
 {
-    extern BVRef    bvChain;
-
 #if HAS_MKEXT
     /* We need to patch the kernel to load up an mkext in the event that the kernel is prelinked. */
-    if(!is_module_loaded("KernelPatcher.dylib", 0)) register_hook_callback("DecodeKernel", &patch_kernel);
+    if(!is_module_loaded("KernelPatcher.dylib")) register_hook_callback("DecodeKernel", &patch_kernel);
 #endif
-    
+
+#if HAS_EMBEDDED_KEXT
+    /* let chameleon to load this kext */
+    register_hook_callback("DriversLoaded", &loadEmbeddedExtension);
+#endif
     
     // We need the platform UUID *early*
     InternalreadSMBIOSInfo(getSmbios(SMBIOS_ORIGINAL));
-    const char* uuid = getStringFromUUID(getSmbiosUUID());
+    const char* uuid = getStringFromUUID((const uint8_t *)getSmbiosUUID());
     
     // By the time we are here, the file system has already been probed, lets fine the nvram plist.
-    BVRef bvr = scanforNVRAM(bvChain);
+    int bvCount = 0;
+    scanDisks(gBIOSDev, &bvCount);
+    gbvr = scanforNVRAM(bvCount);
     
     /** Load Dictionary if possible **/
-    if(bvr)
+    if(gbvr)
     {
-        char* nvramPath = malloc(sizeof("hd(%d,%d)/Extra/nvram.plist") + (uuid ? strlen(uuid)  + 2 : 0));
-        if(!uuid) sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.plist", BIOS_DEV_UNIT(bvr), bvr->part_no);
-        else sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.%s.plist", BIOS_DEV_UNIT(bvr), bvr->part_no, uuid);
+        char* nvramPath = NULL;
+        if (gOldPath)
+        {
+            nvramPath = malloc(strlen("hd(%d,%d)/Extra/nvram.plist") + (uuid ? (strlen(uuid) +2) : 0) +1);
+            if(!uuid) sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.plist", BIOS_DEV_UNIT(gbvr), gbvr->part_no);
+            else sprintf(nvramPath, "hd(%d,%d)/Extra/nvram.%s.plist", BIOS_DEV_UNIT(gbvr), gbvr->part_no, uuid);
+        }
+        else
+        {
+            nvramPath = malloc(strlen("hd(%d,%d)//.nvram.plist") + 1);
+            sprintf(nvramPath, "hd(%d,%d)/.nvram.plist", BIOS_DEV_UNIT(gbvr), gbvr->part_no);
+        }
+        
+        verbose("\tloading %s: ", nvramPath);
+        
         int fh = open(nvramPath, 0);
         if(fh >= 0)
         {
@@ -359,22 +481,50 @@ static void readplist()
                 
                 if (plistSize && read(fh, plistBase, plistSize) == plistSize)
                 {
-                    XMLParseFile( plistBase, &gPListData );
+                    // cleaning nvram.plist from \n and \t.
+                    // data tag have those bytes after the serialization:
+                    //
+                    //  <key>SystemAudioVolume</key>
+                    //  <data>
+                    //      fw==
+                    //  </data>
+                    //
+                    // but I want it to be: <data>fw==</data>
+                    //
+                    // so some garbage ends up in /chosen/nvram. just remove them!
+                    XMLParseFile(strdelchar(strdelchar(plistBase, '\n'), '\t'), &gPListData);
                     if(gPListData)
                     {
                         gNVRAMData = XMLCastDict(XMLGetProperty(gPListData,"NVRAM"));
-                        
-                        register_hook_callback("DriversLoaded",&FileNVRAM_hook);    // Main code, runs when kernel has begun booting.
-                        register_hook_callback("BootOptions", (void (*)(void *, void *, void *, void *)) &getcommandline);     // Code executed every time the boot options / command line is used.
-                        register_hook_callback("ClearArgs", &clearBootArgsHook);    // Code executed every time the boot arguments are cleared out.
+                        verbose("success.\n");
                     }
-
+                    else
+                    {
+                        verbose("error parsing file.\n");
+                    }
+                }
+                else
+                {
+                    verbose("reading failed.\n");
                 }
             }
+            else
+            {
+                verbose("empty file.\n");
+            }
+        }
+        else
+        {
+            verbose("failed to open file.\n");
         }
         free(nvramPath);
         
     }
+    // hook anyway. We supposed that if no .nvram.plist was found is because that does not exist,
+    // but let treat the command line arguments
+    register_hook_callback("DriversLoaded",&FileNVRAM_hook);    // Main code, runs when kernel has begun booting.
+    register_hook_callback("BootOptions", (void (*)(void *, void *, void *, void *)) &getcommandline);     // Code executed every time the boot options / command line is used.
+    register_hook_callback("ClearArgs", &clearBootArgsHook);    // Code executed every time the boot arguments are cleared out.
 }
 
 
@@ -383,12 +533,12 @@ void FileNVRAM_hook()
     bool disable = false;
     getBoolForKey(BOOT_KEY_NVRAM_DISABLED, &disable, &bootInfo->chameleonConfig);
     if(disable) return;
-
-    const char* uuid = getStringFromUUID(getSmbiosUUID());
+    
+    const char* uuid = getStringFromUUID((const uint8_t *)getSmbiosUUID());
     
     Node * nvramNode = DT__FindNode("/chosen/nvram", true);
     Node * settingsNode = DT__AddChild(nvramNode, FILE_NVRAM_GULD);
-
+    
     if(gCommandline)
     {
         DT__AddProperty(nvramNode, "boot-args", strlen(gCommandline)+1, (void*)gCommandline);
@@ -405,36 +555,46 @@ void FileNVRAM_hook()
     {
         processDict(gNVRAMData, nvramNode);
     }
-   
+    
     char* path = NULL;
     
-    BVRef bvr = getBootVolumeRef(NULL, (const char**)&path);
-    if(bvr->OSisInstaller)
+    char label[128];
+    if(gbvr && gbvr->description)
     {
-        // Todo: VERIFY this path
-        char label[128];
-        if(bvr->description)
+        gbvr->description(gbvr, label, sizeof(label)-1);
+        
+        if (gOldPath)
         {
-            bvr->description(bvr, label, sizeof(label)-1);
-            path = malloc(sizeof("/Volumes/%s/Extra/nvram..plist") + strlen(label));
+            path = malloc(strlen("/Volumes/%s/Extra/nvram.plist") +
+                          strlen(label) +
+                          (uuid ? (strlen(uuid) +2) : 0)
+                          +1);
+            
             if(uuid) sprintf(path, "/Volumes/%s/Extra/nvram.%s.plist", label, uuid);
-            else sprintf(path, "/Volumes/%s/Extra/nvram.plist", label, uuid);
-            DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path)+1, path);
+            else sprintf(path, "/Volumes/%s/Extra/nvram.plist", label);
         }
+        else
+        {
+            path = malloc(strlen("/Volumes//.nvram.plist") + strlen(label) +1);
+            sprintf(path, "/Volumes/%s/.nvram.plist", label);
+        }
+        
+        DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path), path);
     }
     else
     {
-        if(!uuid) path = "/Extra/nvram.plist";
-        else
-        {
-            path = malloc(sizeof("/Extra/nvram..plist") + strlen(uuid));
-            sprintf(path, "/Extra/nvram.%s.plist", uuid);
-        }
-        DT__AddProperty(settingsNode, NVRAM_SET_FILE_PATH, strlen(path)+1, path);
+        // FileNVRAM.kext will anyway set a default path..
     }
     
-#if HAS_MKEXT
+#if HAS_MKEXT /* executed only if HAS_EMBEDDED_KEXT is not defined */
     addMKext(FileNVRAM_mkext, FileNVRAM_mkext_len);
+#endif
+    
+#if HAS_EMBEDDED_KEXT
+    loadEmbeddedExtension(NULL,
+                          NULL,
+                          NULL,
+                          NULL);
 #endif
 }
 
@@ -473,5 +633,71 @@ static bool addMKext(void* binary, unsigned long len)
                         kBootDriverTypeMKEXT);
     
     return true;
+}
+#endif
+
+#if HAS_EMBEDDED_KEXT
+/*
+ Note: FileNVRAM has the OSBundleRequired set to "Root", to be tested it in Safe Boot..
+ */
+void loadEmbeddedExtension(void* arg1,
+                           void* arg2,
+                           void* arg3,
+                           void* arg4)
+{
+    TagPtr plistPtr, prop;
+    DriverInfoPtr driver;
+    char segName[32];
+    long driverAddr, driverLength, fakeBundlePathLength;
+    char *bundlePath = NULL, *executableName;
+    
+    void *executableAddr            = (void *)FileNVRAM_binary;
+    void *plistAddr                 = (void *)FileNVRAMInfo_plist;
+    unsigned long  executableLength = (unsigned long)FileNVRAM_binary_len;
+    long plistLength                = (long)FileNVRAMInfo_plist_len;
+    
+    ThinFatFile(&executableAddr, &executableLength);
+    
+    XMLParseFile(plistAddr, &plistPtr);
+    
+    prop = XMLGetProperty(plistPtr, kPropCFBundleExecutable);
+    
+    if(prop != 0)
+    {
+        executableName = prop->string;
+        fakeBundlePathLength = strlen("/System/Library/Extensions/.kext") + strlen(executableName) +1;
+        bundlePath = malloc(fakeBundlePathLength);
+        snprintf(bundlePath, fakeBundlePathLength, "%s/%s.kext", "/System/Library/Extensions", executableName);
+        
+        driverLength = sizeof(DriverInfo) + plistLength + executableLength + fakeBundlePathLength;
+        driverAddr = AllocateKernelMemory(driverLength);
+        
+        // Set up the DriverInfo.
+        driver = (DriverInfoPtr)driverAddr;
+        driver->executableLength = executableLength;
+        driver->plistAddr = (char *)(driverAddr + sizeof(DriverInfo));
+        driver->plistLength = plistLength;
+        
+        driver->executableAddr = (void *)(driverAddr + sizeof(DriverInfo) + plistLength);
+        driver->executableLength = executableLength;
+        
+        driver->bundlePathAddr = (void *)(driverAddr + sizeof(DriverInfo) +
+                                          plistLength + driver->executableLength);
+        
+        driver->bundlePathLength = fakeBundlePathLength;
+        
+        // Save the plist and bundle.
+        strlcpy(driver->plistAddr, plistAddr, driver->plistLength);
+        
+        memcpy(driver->executableAddr, executableAddr, executableLength);
+        
+        strlcpy(driver->bundlePathAddr, bundlePath, fakeBundlePathLength);
+        
+        // Add an entry to the memory map.
+        snprintf(segName, sizeof(segName), "Driver-%lx", (unsigned long)driver);
+        AllocateMemoryRange(segName, driverAddr, driverLength, kBootDriverTypeKEXT);
+    }
+    
+    if(bundlePath) free(bundlePath);
 }
 #endif

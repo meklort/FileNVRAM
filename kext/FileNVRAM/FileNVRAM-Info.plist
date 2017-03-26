@@ -23,7 +23,7 @@
 	<key>CFBundleVersion</key>
 	<string>${MODULE_VERSION}</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2013 xZenue LLC. All rights reserved.</string>
+	<string>Copyright © 2013-2017 xZenue LLC. All rights reserved.</string>
 	<key>IOKitPersonalities</key>
 	<dict>
 		<key>FileNVRAM</key>

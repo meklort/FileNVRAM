@@ -12,7 +12,7 @@
 #include "kernel_patcher.h"
 #include "modules.h"
 #include "sl.h"
-#include <libsaio/bootstruct.h>
+#include "bootstruct.h"
 
 
 /****************************************** Defines ******************************************/
@@ -36,7 +36,7 @@ typedef struct section_t
 /***************************************** Functions *****************************************/
 
 /** section_handler: used by the macho loader to notify us of a section **/
-static void             section_handler(char* base, char* new_base, char* section, char* segment, void* cmd, UInt64 offset, UInt64 address);
+static void section_handler(char* section, char* segment, void* cmd, UInt64 offset, UInt64 address);
 
 /** Determine the type of kernel being loaded / patched **/
 static int              determineKernelArchitecture(void* kernelData);
@@ -75,7 +75,7 @@ void patch_kernel(void* kernelData, void* arg2, void* arg3, void *arg4)
     register_section("__KLD", "__text");
     register_section("__TEXT","__text");
     
-	parse_mach(kernelData, NULL, NULL, &add_symbol, &section_handler);
+	parse_mach(kernelData, NULL, &add_symbol, &section_handler);
     kernelSymbols = moduleSymbols;    // save symbols for future use, if needed
     moduleSymbols = origmoduleSymbols; // restore orig pointer;
     
@@ -172,7 +172,7 @@ static int determineKernelArchitecture(void* kernelData)
 /**
  ** Handle callbacks from the macho parser, recording addresses if previously requested
  **/
-static void section_handler(char* base, char* new_base, char* section, char* segment, void* cmd, UInt64 offset, UInt64 address)
+static void section_handler(char* section, char* segment, void* cmd, UInt64 offset, UInt64 address)
 {	
     // Find the section in our list of registered / requested sections to watch...
     section_t *kernelSection = lookup_section(segment, section);
@@ -209,12 +209,12 @@ void patch_readStartupExtensions(void* kernelData)
     
     section_t* __KLD = lookup_section("__KLD","__text");
     
+    unsigned int __KLDaddr = ((UInt32 *) &__KLD->address)[0]; // truncating to 32 bit
     
-    
-	UInt32 readBooterExtensionsLocation     = readBooterExtensions    ? readBooterExtensions->addr    - __KLD->address + __KLD->offset: 0;
-	UInt32 readPrelinkedExtensionsLocation  = readPrelinkedExtensions ? readPrelinkedExtensions->addr - __KLD->address + __KLD->offset : 0;
-	UInt32 OSKextLogLocation                = OSKextLog               ? OSKextLog->addr               - __KLD->address + __KLD->offset : 0;
-	UInt32 getsegbynameLocation             = getsegbyname            ? getsegbyname->addr            - __KLD->address + __KLD->offset : 0;
+	UInt32 readBooterExtensionsLocation     = readBooterExtensions    ? readBooterExtensions->addr    - __KLDaddr + __KLD->offset: 0;
+	UInt32 readPrelinkedExtensionsLocation  = readPrelinkedExtensions ? readPrelinkedExtensions->addr - __KLDaddr + __KLD->offset : 0;
+	UInt32 OSKextLogLocation                = OSKextLog               ? OSKextLog->addr               - __KLDaddr + __KLD->offset : 0;
+	UInt32 getsegbynameLocation             = getsegbyname            ? getsegbyname->addr            - __KLDaddr + __KLD->offset : 0;
     
     
     
@@ -223,9 +223,9 @@ void patch_readStartupExtensions(void* kernelData)
     OSKextLogLocation -= (UInt32)kernelData;
     readBooterExtensionsLocation -= (UInt32)kernelData;
 	getsegbynameLocation -= (UInt32)kernelData;
-    //printf("Starting at 0x%X\n", readPrelinkedExtensions->addr - (UInt32)kernelData + __KLD->offset - __KLD->address);
-    //printf("Starting at 0x%X\n", patchLocation + __KLD->address - __KLD->offset);
-    //printf("Starting at 0x%X\n", __KLD->address - __KLD->offset);
+    //printf("Starting at 0x%X\n", readPrelinkedExtensions->addr - (UInt32)kernelData + __KLD->offset - __KLDaddr);
+    //printf("Starting at 0x%X\n", patchLocation + __KLDaddr - __KLD->offset);
+    //printf("Starting at 0x%X\n", __KLDaddr - __KLD->offset);
     
     
     
@@ -256,7 +256,7 @@ void patch_readStartupExtensions(void* kernelData)
     patchLocation++;
     
     
-    //printf("patchLocation at 0x%X\n", patchLocation - __KLD->offset + __KLD->address);
+    //printf("patchLocation at 0x%X\n", patchLocation - __KLD->offset + __KLDaddr);
     
     while(
 		  (bytes[patchLocation -1] != 0xE8) ||
@@ -268,7 +268,7 @@ void patch_readStartupExtensions(void* kernelData)
 	{
 		patchLocation--;
 	}
-    //printf("patchLocation at 0x%X\n", patchLocation - __KLD->offset + __KLD->address);
+    //printf("patchLocation at 0x%X\n", patchLocation - __KLD->offset + __KLDaddr);
     
     
     // Step 2: remove the _OSKextLog call, this call takes the form:

@@ -1,46 +1,33 @@
-#
-# Makefile for FileNVRAM
-#
+MODULE_NAME = FileNVRAM
+MODULE_AUTHOR = xZenue LLC.
+MODULE_DESCRIPTION = FileNVRAM module for preloading NVRAM values
+MODULE_VERSION = "1.1.5"
+MODULE_COMPAT_VERSION = "1.0.0"
+MODULE_START = $(MODULE_NAME)_start
+MODULE_DEPENDENCIES = Chameleon
 
-PRODUCT=FileNVRAM
+# 1 to build the old mkext
+USE_MKEXT = 0
 
-MAJOR = 1
-MINOR = 1
-REVISION = 4
+# 0 for /Extra/nvram.uuid.plist, 1 to use /.nvram.plist
+USE_ROOT_DIR = 1
 
-ROOT = $(abspath $(CURDIR))
-SRCROOT = ${ROOT}/src
-SDKROOT = ${ROOT}/sdk
-OBJROOT = $(ROOT)/obj
-SYMROOT = $(ROOT)/sym
-DSTROOT = $(ROOT)/dst
-DOCROOT = $(ROOT)/doc
+DIR = FileNVRAM
+EXT = ${SYMROOT}/FileNVRAM
+MKEXT = ${EXT}/FileNVRAM.mkext
 
-SUBDIRS = kext module
+MODULE_OBJS = FileNVRAM.o kernel_patcher.o
 
-module: kext
+${OBJROOT}/FileNVRAM.o: ${MKEXT}.h
 
-.PHONY: ${SUBDIRS}
+include ../MakeInc.dir
 
-all clean distclean: ${SUBDIRS}
+ifeq ($(MAKECMDGOALS),all)
+    $(shell ${CURDIR}/buildkext ${EXT} ${USE_MKEXT} ${USE_ROOT_DIR} >&2)
 
-test:
-
-.PHONY: dst
-dst: ${DSTROOT} ${SUBDIRS}
-	@cp docs/* ${SYMROOT}
-	@echo "[DST] ${PRODUCT}-${MAJOR}.${MINOR}.${REVISION}.tgz"
-
-${SUBDIRS}: ${SYMROOT} ${OBJROOT}
-	@echo ================= make $@ ================
-	@${MAKE} -r -R -C "$@" ${MAKECMDGOALS}	\
-		DSTROOT='${DSTROOT}'		\
-		SYMROOT='${SYMROOT}'		\
-		OBJROOT='${OBJROOT}'		\
-		DOCROOT='${DOCROOT}'
-	
-
-
-${DSTROOT} ${SYMROOT} ${OBJROOT}:
-	@echo "[MKDIR] $@"
-	@mkdir -p $@
+ifeq ($(USE_MKEXT),1)
+    DEFINES +=-DHAS_MKEXT ${DEFINES}
+else
+    DEFINES +=-DHAS_EMBEDDED_KEXT ${DEFINES}
+endif
+endif

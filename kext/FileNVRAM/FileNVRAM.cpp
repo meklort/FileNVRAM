@@ -12,6 +12,7 @@
 
 
 #include "FileNVRAM.h"
+#include <libkern/version.h>
 #include "Support.h"
 #include "Version.h"
 #include <IOKit/IOUserClient.h>
@@ -74,8 +75,8 @@ bool FileNVRAM::start(IOService *provider)
     if(mInitComplete)
     {
         IOLog(FileNVRAM_COPYRIGHT,
-              "awakening",
               kmod_info.version,
+              "awakening",
               FileNVRAM_NEWYEAR);
         return true;
     }
@@ -83,8 +84,8 @@ bool FileNVRAM::start(IOService *provider)
     if(!super::start(provider)) return false;
     
     IOLog(FileNVRAM_COPYRIGHT,
-          mInitComplete ? "initialized" : "start",
           kmod_info.version,
+          mInitComplete ? "initialized" : "start",
           FileNVRAM_NEWYEAR);
     
     mFilePath		= NULL;			// no know file
@@ -120,13 +121,13 @@ bool FileNVRAM::start(IOService *provider)
     {
         copyEntryProperties(NULL, bootnvram);
         bootnvram->detachFromParent(root, gIODTPlane);
+        registerNVRAM();
     }
     
     if(mReadOnly)
     {
         // we assume that the bootloader has done its job
         // i.e. populate /chosen/nvram
-        mInitComplete = true;
         mSafeToSync = true;
         registerNVRAM();
         return true;
@@ -155,13 +156,17 @@ bool FileNVRAM::start(IOService *provider)
         registerNVRAM();
     }
     
-    mInitComplete = true;
-    
     return true;
 }
 
 void FileNVRAM::registerNVRAM()
 {
+    if(mInitComplete)
+    {
+        return;
+    }
+    mInitComplete = true;
+    
     // Create entry in device tree -> IODeviceTree:/options
     setName("AppleEFINVRAM");
     setName("options", gIODTPlane);
@@ -449,7 +454,7 @@ void FileNVRAM::doSync(void)
     s->addString(NVRAM_FILE_FOOTER);
     
     
-    int error =	write_buffer(s->text());
+    int error =	write_buffer(s->text(), s->getLength());
     if(error)
     {
         LOG(ERROR, "Unable to write to %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
@@ -533,6 +538,20 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
     result = IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator);
     if(result != kIOReturnSuccess) return false;
     
+    if(version_major >= 15) {
+        // Check for SIP configuration variables in 10.11 and later
+        if((strncmp("csr-data", aKey->getCStringNoCopy(), 8) == 0) || (strncmp("csr-active-config", aKey->getCStringNoCopy(), 17) == 0))
+        {
+            // We have a match so first verify the entitlements.
+            if(IOUserClient::copyClientEntitlement(current_task(), "com.apple.private.iokit.nvram-csr") == NULL)
+            {
+                LOG(INFO, "setProperty(%s, (%s) %p) failed (not entitled)\n", aKey->getCStringNoCopy(), anObject->getMetaClass()->getClassName(), anObject);
+                // Not entitled!
+                return false;
+            }
+        }
+    }
+    
     OSSerialize *s = OSSerialize::withCapacity(1000);
     if(anObject->serialize(s))
     {
@@ -558,6 +577,7 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
         handleSetting(str, anObject, this);
         str->release();
         IOFree(newKey, bytes);
+        return false; // don't set FileNVRAM settings, just apply them
     }
     
     bool stat = IOService::setProperty(aKey, cast(aKey, anObject));
@@ -816,7 +836,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                         char* xml = buffer + strlen(NVRAM_FILE_HEADER);
                         size_t xmllen = (size_t)len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
                         xml[xmllen-1] = 0;
-			OSString *errmsg = 0;
+                        OSString *errmsg = 0;
                         OSObject* nvram = OSUnserializeXML(xml, &errmsg);
                         
                         if(nvram)
@@ -900,20 +920,17 @@ OSObject* FileNVRAM::cast(const OSSymbol* key, OSObject* obj)
     return obj;
 }
 
-IOReturn FileNVRAM::write_buffer(char* buffer)
+IOReturn FileNVRAM::write_buffer(char* buffer, int length)
 {
     IOReturn error = 0;
     
     if(mReadOnly) return error;
-    
-    int length = (int)strlen(buffer);
-    int ares;
+
     struct vnode * vp;
     
     if(mCtx)
     {
-        // O_WRONLY
-        if((error = vnode_open(FILE_NVRAM_PATH, (O_WRONLY | O_CREAT | O_TRUNC | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
+        if((error = vnode_open(FILE_NVRAM_PATH, (O_TRUNC | O_CREAT | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
         {
             LOG(ERROR, "error, vnode_open(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
             
@@ -923,8 +940,7 @@ IOReturn FileNVRAM::write_buffer(char* buffer)
         {
             if((error = vnode_isreg(vp)) == VREG)
             {
-                // 10.6 and later
-                if((error = vn_rdwr(UIO_WRITE, vp, buffer, length, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), &ares/*(int *) 0*/, vfs_context_proc(mCtx))))
+                if((error = vn_rdwr(UIO_WRITE, vp, (caddr_t)buffer, length, (off_t)0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), (int *) 0, vfs_context_proc(mCtx))))
                 {
                     LOG(ERROR, "error, vn_rdwr(%s) failed with error %d!\n", FILE_NVRAM_PATH, error);
                 }
