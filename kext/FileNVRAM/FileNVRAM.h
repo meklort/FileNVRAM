@@ -24,7 +24,7 @@
 #define TOSTRING(x) STRINGIFY(x)
 
 /* This is needed for Info.plist to work properly */
-#define FileNVRAM AppleNVRAM
+#define FileNVRAM AppleEFINVRAM
 
 #define HEADER      __FILE__ "[" TOSTRING(__LINE__) "]: "
 
@@ -78,7 +78,8 @@ do {                        \
 #define BOOT_KEY_NVRAM_DISABLED "-NoFileNVRAM"
 #define BOOT_KEY_NVRAM_RDONLY   "-FileNVRAMro"
 #define NVRAM_SET_FILE_PATH     "NVRAMFile"
-#define FILE_NVRAM_PATH			"/Extra/nvram.plist"
+#define FILE_COMPAT_NVRAM_PATH  "/Extra/nvram.plist"
+#define FILE_NVRAM_PATH			"/.nvram.plist"
 
 #define NVRAM_SEPERATOR         ":"
 #define NVRAM_FILE_DT_LOCATION	"/chosen/nvram"
@@ -174,8 +175,8 @@ private:
     
     static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
     
-    virtual IOReturn write_buffer(char* buffer);
-    virtual IOReturn read_buffer(char** buffer, uint64_t* length);
+    virtual IOReturn write_buffer(const char* path, char* buffer);
+    virtual IOReturn read_buffer(const char* path, char** buffer, uint64_t* length);
     
     bool mReadOnly;
     bool mInitComplete;
