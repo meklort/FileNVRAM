@@ -88,9 +88,6 @@ do {                        \
                                 "\t<plist version=\"1.0\">\n<dict>\n<key>NVRAM</key>\n"
 #define NVRAM_FILE_FOOTER       "</dict></plist>\n"
 
-#define NVRAM_MISS_KEY			"NVRAM_MISS"
-#define NVRAM_MISS_HEADER       "\n<key>NVRAM_MISS</key>\n"
-
 
 #define kNVRAMSyncCommand   1
 #define kNVRAMSetProperty   2
@@ -185,7 +182,6 @@ private:
     
     vfs_context_t mCtx;
     
-    OSDictionary * mNvramMissDict;
     IOCommandGate* mCommandGate;
     OSString*      mFilePath;
     IOTimerEventSource* mTimer;
