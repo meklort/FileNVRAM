@@ -1219,7 +1219,15 @@ void FileNVRAM::handleSetting(const OSObject* object, const OSObject* value)
             OSData* dat = OSDynamicCast(OSData, value);
             if(dat)
             {
+                size_t bytes = dat->getLength();
+                const void* buffer = dat->getBytesNoCopy();
+                char* string = (char*)IOMalloc(bytes + 1);
+                memcpy(string, buffer, bytes);
+                string[bytes] = 0; // Add null terminator.
+
                 setPath((const char*)dat->getBytesNoCopy());
+
+                IOFree(string, bytes + 1);
             }
         }
         // Where to get path from?
