@@ -3,7 +3,7 @@
 //  FileNVRAM
 //
 //  Created by Chris Morton on 1/11/13.
-//  Copyright (c) 2013-2014 xZenue LLC. All rights reserved.
+//  Copyright (c) 2013-2017 xZenue LLC. All rights reserved.
 //
 // This work is licensed under the
 //  Creative Commons Attribution-NonCommercial 3.0 Unported License.
@@ -55,17 +55,52 @@ void FileNVRAM::setPath(OSString* path)
     mFilePath = path;
 }
 
+void FileNVRAM::setPath(const char* path)
+{
+    OSString* string = OSString::withCString(path);
+    setPath(string);
+    string->release();
+}
+
 bool FileNVRAM::start(IOService *provider)
 {
     char peBuf[256];
-    mReadOnly      = false;
     bool earlyInit = false;
-    bool debug     = false;
-    
-    if(PE_parse_boot_argn(BOOT_KEY_NVRAM_DISABLED, peBuf, sizeof peBuf))
+
+    if(mInitComplete)
     {
+        //start is called upon wake for some reason.
+        LOG(INFO, FileNVRAM_COPYRIGHT,
+              kmod_info.version,
+              "awakening",
+              FileNVRAM_NEWYEAR);
+        return true;
+    }
+    else if(PE_parse_boot_argn(BOOT_KEY_NVRAM_DISABLED, peBuf, sizeof peBuf))
+    {
+        IOLog(FileNVRAM_COPYRIGHT,
+                kmod_info.version,
+                "disabled",
+                FileNVRAM_NEWYEAR);
+
         return false; /* following module disable method */
     }
+    else
+    {
+        IOLog(FileNVRAM_COPYRIGHT,
+              kmod_info.version,
+              "start",
+              FileNVRAM_NEWYEAR);
+    }
+
+    if(!super::start(provider)) return false;
+
+    // Initialize member variables.
+    mFilePath       = NULL;			// no known file
+    mLoggingLevel   = DISABLED;     // start with logging disabled, can be update for debug
+    mSafeToSync     = false;        // Don't sync untill later
+    mReadOnly       = false;        // Default to writeable NVRAM.
+    mCtx            = vfs_context_current();     // We should be root right now... cache this for later.
 
     if(PE_parse_boot_argn(BOOT_KEY_NVRAM_RDONLY, peBuf, sizeof peBuf))
     {
@@ -75,33 +110,8 @@ bool FileNVRAM::start(IOService *provider)
 
     if(PE_parse_boot_argn(NVRAM_ENABLE_LOG, peBuf, sizeof peBuf))
     {
-        debug = true;
+        mLoggingLevel = NOTICE;
     }
-
-    //start is called upon wake for some reason.
-    if(mInitComplete)
-    {
-        IOLog(FileNVRAM_COPYRIGHT,
-              kmod_info.version,
-              "awakening",
-              FileNVRAM_NEWYEAR);
-        return true;
-    }
-
-    if(!super::start(provider)) return false;
-
-    mFilePath       = NULL;			// no know file
-    mLoggingLevel   = debug ? NOTICE : DISABLED; // start with logging disabled, can be update for debug
-    mInitComplete   = false;        // Don't resync anything that's already in the file system.
-    mSafeToSync     = false;        // Don't sync untill later
-
-    // We should be root right now... cache this for later.
-    mCtx            = vfs_context_current();
-
-    IOLog(FileNVRAM_COPYRIGHT,
-          kmod_info.version,
-          mInitComplete ? "initialized" : "start",
-          FileNVRAM_NEWYEAR);
 
 
     // Register Power modes
@@ -110,7 +120,6 @@ bool FileNVRAM::start(IOService *provider)
     provider->joinPMtree(this);
     
     IORegistryEntry* bootnvram = IORegistryEntry::fromPath(NVRAM_FILE_DT_LOCATION, gIODTPlane);
-    IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
     
     // Create the command gate.
     mCommandGate = IOCommandGate::commandGate( this, dispatchCommand );
@@ -122,11 +131,12 @@ bool FileNVRAM::start(IOService *provider)
     setPropertyTable(dict);
     
     // Set default path for nvram, will be overridden by bootnvram data if needed.
-    setPath(OSString::withCString(FILE_NVRAM_PATH));
+    setPath(FILE_NVRAM_PATH);
 
     
     if(bootnvram)
     {
+        IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
         copyEntryProperties(NULL, bootnvram);
         bootnvram->detachFromParent(root, gIODTPlane);
 
@@ -186,17 +196,17 @@ void FileNVRAM::registerNVRAM()
 void FileNVRAM::stop(IOService *provider)
 {
     OSSafeReleaseNULL(mFilePath);
-
+    IOWorkLoop* workloop = getWorkLoop();
     if(mTimer)
     {
         mTimer->cancelTimeout();
-        getWorkLoop()->removeEventSource(mTimer);
+        workloop->removeEventSource(mTimer);
         OSSafeReleaseNULL(mTimer);
     }
 
     if(mCommandGate)
     {
-        getWorkLoop()->removeEventSource(mCommandGate);
+        workloop->removeEventSource(mCommandGate);
     }
 
     PMstop();
@@ -658,7 +668,7 @@ bool FileNVRAM::setProperty(const OSSymbol *aKey, OSObject *anObject)
         
         // Send d
         OSString* str = OSString::withCString(newKey);
-        handleSetting(str, anObject, this);
+        handleSetting(str, anObject);
         str->release();
         IOFree(newKey, bytes);
     }
@@ -1159,4 +1169,47 @@ IOReturn FileNVRAM::read_buffer(const char* path, char** buffer, uint64_t* lengt
     }
     
     return error;
+}
+
+void FileNVRAM::handleSetting(const OSObject* object, const OSObject* value)
+{
+    OSString* key = OSDynamicCast( OSString, object);
+
+    if(!key)
+    {
+        LOG(NOTICE, "Unknown key\n");
+        return;
+    }
+    else
+    {
+        LOG(NOTICE, "Handling key %s\n", key->getCStringNoCopy());
+    }
+
+    if(key->isEqualTo(NVRAM_SET_FILE_PATH))
+    {
+        OSString* str = OSDynamicCast(OSString, value);
+        if(str)
+        {
+            setPath(str);
+        }
+        else
+        {
+            OSData* dat = OSDynamicCast(OSData, value);
+            if(dat)
+            {
+                setPath((const char*)dat->getBytesNoCopy());
+            }
+        }
+        // Where to get path from?
+    }
+    else if(key->isEqualTo(NVRAM_ENABLE_LOG))
+    {
+        OSData* shouldlog = OSDynamicCast(OSData, value);
+        if(shouldlog)
+        {
+            const void* data = shouldlog->getBytesNoCopy();
+            mLoggingLevel = ((UInt8*)data)[0];
+            LOG(INFO, "Setting logging to level %d.\n", mLoggingLevel);
+        }
+    }
 }

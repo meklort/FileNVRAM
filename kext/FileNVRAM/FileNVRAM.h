@@ -3,7 +3,7 @@
 //  FileNVRAM
 //
 //  Created by Chris Morton on 1/11/13.
-//  Copyright (c) 2013-2014 xZenue LLC. All rights reserved.
+//  Copyright (c) 2013-2017 xZenue LLC. All rights reserved.
 //
 // This work is licensed under the
 //  Creative Commons Attribution-NonCommercial 3.0 Unported License.
@@ -164,9 +164,12 @@ public:
 private:
     static void timeoutOccurred(OSObject *target, IOTimerEventSource* timer);
     
+    virtual void handleSetting(const OSObject* object, const OSObject* value);
+
     virtual void registerNVRAM();
     
     virtual void setPath(OSString* path);
+    virtual void setPath(const char* path);
     
     virtual OSObject* cast(const OSSymbol* key, OSObject* obj);
     
