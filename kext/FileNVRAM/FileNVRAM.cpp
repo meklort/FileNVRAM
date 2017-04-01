@@ -961,6 +961,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                         }
                         else
                         {
+                            self->mReadOnly = false; // Allow writes, hopefully the dist is mounted.
                             self->mSafeToSync = true;
                             self->registerNVRAM();
                         }
@@ -982,7 +983,6 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                     timer->cancelTimeout();
                     self->getWorkLoop()->removeEventSource(timer);
                     timer->release();
-                    self->mReadOnly = FALSE;
                     self->mTimer = NULL;
 
                     if(false == self->mLoadedNVRAM)
@@ -1010,6 +1010,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                     }
                     IOFree(buffer, (size_t)len);
 
+                    self->mReadOnly = false;
                     self->mSafeToSync = true;
                     self->registerNVRAM();
                     //self->sync();
