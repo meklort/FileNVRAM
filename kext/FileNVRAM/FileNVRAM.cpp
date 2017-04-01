@@ -303,17 +303,17 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
         
         
         iter = OSCollectionIterator::withCollection(properties);
-        if(0 == iter) return;
+        if(NULL == iter) return;
         
         while(result)
         {
             key = OSDynamicCast(OSSymbol, iter->getNextObject());
-            if(0 == key) break;
+            if(NULL == key) break;
             
             if(key->isEqualTo("name")) continue; // Special property in IORegistery, ignore
             
             object = properties->getObject(key);
-            if(0 == object) continue;
+            if(NULL == object) continue;
             
             if(prefix)
             {
@@ -392,7 +392,7 @@ void FileNVRAM::doSync(void)
     OSDictionary * inputDict = dictionaryWithProperties();
     OSCollectionIterator *iter = OSCollectionIterator::withCollection(inputDict);
     
-    if(0 == iter)
+    if(NULL == iter)
     {
         LOG(ERROR, "FAILURE!. No iterator on input dictionary (myself)\n");
         return;
@@ -473,14 +473,14 @@ bool FileNVRAM::serializeProperties(OSSerialize *s) const
     UInt32               variablePerm;
     bool                 result, hasPrivilege;
     OSDictionary* dict = dictionaryWithProperties();
-    if(0 == dict) return false;
+    if(NULL == dict) return false;
 
     // Verify permissions.
     hasPrivilege = (kIOReturnSuccess == IOUserClient::clientHasPrivilege(current_task(), kIONVRAMPrivilege));
 
     /* Copy properties with client privilege. */
     iter = OSCollectionIterator::withCollection(dict);
-    if(0 == iter)
+    if(NULL == iter)
     {
         dict->release();
         return false;
@@ -488,7 +488,7 @@ bool FileNVRAM::serializeProperties(OSSerialize *s) const
     while(1)
     {
         key = OSDynamicCast(OSSymbol, iter->getNextObject());
-        if(0 == key) break;
+        if(NULL == key) break;
 
         variablePerm = getOFVariablePerm(key);
         if((hasPrivilege || (variablePerm != kOFVariablePermRootOnly)) &&
@@ -575,7 +575,8 @@ OSObject * FileNVRAM::getProperty(const char *aKey) const
     OSObject *theObject = 0;
     
     keySymbol = OSSymbol::withCStringNoCopy(aKey);
-    if(keySymbol != 0) {
+    if(NULL != keySymbol)
+    {
         theObject = getProperty(keySymbol);
         keySymbol->release();
     }
@@ -1068,8 +1069,6 @@ IOReturn FileNVRAM::write_buffer(const char* path, char* buffer)
         if((error = vnode_open(path, (O_WRONLY | O_CREAT | O_TRUNC | FWRITE | O_NOFOLLOW), S_IRUSR | S_IWUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
         {
             LOG(ERROR, "error, vnode_open(%s) failed with error %d!\n", path, error);
-            
-            return error;
         }
         else
         {
@@ -1095,7 +1094,7 @@ IOReturn FileNVRAM::write_buffer(const char* path, char* buffer)
     else
     {
         LOG(ERROR,  "mCtx == NULL!\n");
-        error = -EINVAL; // EINVAL;
+        error = -EINVAL;
     }
     
     return error;
@@ -1113,8 +1112,6 @@ IOReturn FileNVRAM::read_buffer(const char* path, char** buffer, uint64_t* lengt
         if((error = vnode_open(path, (O_RDONLY | FREAD | O_NOFOLLOW), S_IRUSR, VNODE_LOOKUP_NOFOLLOW, &vp, mCtx)))
         {
             LOG(ERROR, "failed opening vnode at path %s, errno %d\n", path, error);
-            
-            return error;
         }
         else
         {
@@ -1158,7 +1155,7 @@ IOReturn FileNVRAM::read_buffer(const char* path, char** buffer, uint64_t* lengt
     else
     {
         LOG(ERROR, "mCtx == NULL!\n");
-        error = 0xFFFF; // EINVAL;
+        error = -EINVAL;
     }
     
     return error;
