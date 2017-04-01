@@ -7,12 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2737AF001E8FFC7300DC0C90 /* Version.h in Headers */ = {isa = PBXBuildFile; fileRef = 2737AEFF1E8FFC7300DC0C90 /* Version.h */; };
 		27A0395516A13A7B0043DBF3 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 27A0395316A13A7B0043DBF3 /* InfoPlist.strings */; };
 		27A0395816A13A7B0043DBF3 /* FileNVRAM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 27A0395716A13A7B0043DBF3 /* FileNVRAM.cpp */; };
 		27A41F0D16B8BBCB00F702AA /* Support.h in Headers */ = {isa = PBXBuildFile; fileRef = 27A41F0B16B8BBCB00F702AA /* Support.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2737AEFF1E8FFC7300DC0C90 /* Version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Version.h; sourceTree = "<group>"; };
 		27A0394B16A13A7B0043DBF3 /* FileNVRAM.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FileNVRAM.kext; sourceTree = BUILT_PRODUCTS_DIR; };
 		27A0394F16A13A7B0043DBF3 /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = System/Library/Frameworks/Kernel.framework; sourceTree = SDKROOT; };
 		27A0395216A13A7B0043DBF3 /* FileNVRAM-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FileNVRAM-Info.plist"; sourceTree = "<group>"; };
@@ -71,6 +73,7 @@
 		27A0395016A13A7B0043DBF3 /* FileNVRAM */ = {
 			isa = PBXGroup;
 			children = (
+				2737AEFF1E8FFC7300DC0C90 /* Version.h */,
 				27A0395616A13A7B0043DBF3 /* FileNVRAM.h */,
 				27A0395716A13A7B0043DBF3 /* FileNVRAM.cpp */,
 				27A41F0A16B8BBCB00F702AA /* Support.cpp */,
@@ -98,6 +101,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				27A41F0D16B8BBCB00F702AA /* Support.h in Headers */,
+				2737AF001E8FFC7300DC0C90 /* Version.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,9 +260,10 @@
 				GCC_VERSION = "";
 				INFOPLIST_FILE = "FileNVRAM/FileNVRAM-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
-				MODULE_NAME = com.xZenue.kext.FileNVRAM;
+				MODULE_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				MODULE_VERSION = 6.9.4;
 				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.apple.driver.AppleEFINVRAM;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = YES;
@@ -278,9 +283,10 @@
 				GCC_VERSION = "";
 				INFOPLIST_FILE = "FileNVRAM/FileNVRAM-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
-				MODULE_NAME = com.xZenue.kext.FileNVRAM;
+				MODULE_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				MODULE_VERSION = 6.9.4;
 				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.apple.driver.AppleEFINVRAM;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = YES;
