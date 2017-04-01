@@ -100,6 +100,7 @@ bool FileNVRAM::start(IOService *provider)
     mLoggingLevel   = DISABLED;     // start with logging disabled, can be update for debug
     mSafeToSync     = false;        // Don't sync untill later
     mReadOnly       = false;        // Default to writeable NVRAM.
+    mLoadedNVRAM    = false;        // NVRAM has yet to be loaded from disk or the bootloader
     mCtx            = vfs_context_current();     // We should be root right now... cache this for later.
 
     if(PE_parse_boot_argn(BOOT_KEY_NVRAM_RDONLY, peBuf, sizeof peBuf))
@@ -143,7 +144,7 @@ bool FileNVRAM::start(IOService *provider)
         // NVRAM Data available, register now.
         earlyInit = true;
     }
-
+    
     if(false == mReadOnly)
     {
         // We are allowed to write to the file system, so start probing for the disk
@@ -152,7 +153,7 @@ bool FileNVRAM::start(IOService *provider)
         if(mTimer)
         {
             // Don't write to the disk untill the disk is found.
-            mReadOnly = TRUE;
+            mReadOnly = true;
             getWorkLoop()->addEventSource( mTimer);
             mTimer->setTimeoutMS(50); // callback isn't being setup right, causes a panic
         }
@@ -161,6 +162,14 @@ bool FileNVRAM::start(IOService *provider)
             // Unable to schedule timer, allow disk writes immediately, hopefully the disk attaches at some point.
             earlyInit = true;
         }
+    }
+    else
+    {
+        // Read only data.
+        // TODO: handle this case, presently and error condition.
+
+        // Register a blank nvram, but don't allow it to be synced to disk.
+        earlyInit = true;
     }
 
     // We don't have initial nvram data from the bootloader, or we couldn't schedule a
@@ -275,8 +284,15 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
     OSDictionary* properties;
     OSCollectionIterator *iter;
     
+    if(false == mLoadedNVRAM)
+    {
+        // We've already loaded the NVRAM from disk or from the bootlaoder. Don't do it again.
+        return;
+    }
+
     if(entry)
     {
+        mLoadedNVRAM = TRUE;
         // Parse all IORegistery Children
         OSIterator * iterator = entry->getChildIterator(gIODTPlane);
         
@@ -314,14 +330,14 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
         
         iter = OSCollectionIterator::withCollection(properties);
         if(NULL == iter) return;
-        
+
         while(result)
         {
             key = OSDynamicCast(OSSymbol, iter->getNextObject());
             if(NULL == key) break;
-            
+
             if(key->isEqualTo("name")) continue; // Special property in IORegistery, ignore
-            
+
             object = properties->getObject(key);
             if(NULL == object) continue;
             
@@ -341,7 +357,7 @@ void FileNVRAM::copyEntryProperties(const char* prefix, IORegistryEntry* entry)
                 setProperty(key, object);
             }
         }
-        
+
         iter->release();
     }
 }
@@ -924,13 +940,12 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
             
             if(found)
             {
-                bool readable = FALSE;
                 UInt8 mLoggingLevel = self->mLoggingLevel;
                 LOG(NOTICE, "BSD found, syncing\n");
                 
                 // TODO: Read out nvram plist and populate device tree
                 const char* path = self->mFilePath->getCStringNoCopy();
-                char* buffer;
+                char* buffer = NULL;
                 uint64_t len;
                 if(0 != self->read_buffer(path, &buffer, &len))
                 {
@@ -953,17 +968,15 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                     else
                     {
                         LOG(NOTICE, "Loading nvram from disk at %s\n", FILE_COMPAT_NVRAM_PATH);
-                        readable = true;
                     }
                 }
                 else
                 {
                     LOG(NOTICE, "Loading nvram from disk at %s\n", path);
-                    readable = true;
                 }
 
 
-                if(readable)
+                if(buffer)
                 {
                     // Disk found, we can now write.
                     timer->cancelTimeout();
@@ -971,26 +984,32 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                     timer->release();
                     self->mReadOnly = FALSE;
                     self->mTimer = NULL;
-                    
-                    if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
+
+                    if(false == self->mLoadedNVRAM)
                     {
-                        char* xml = buffer + strlen(NVRAM_FILE_HEADER);
-                        size_t xmllen = (size_t)len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
-                        xml[xmllen-1] = 0;
-                        OSString *errmsg = 0;
-                        OSObject* nvram = OSUnserializeXML(xml, &errmsg);
-                        
-                        if(nvram)
+                        // If we haven't loaded anything from the bootloader yet. Load it now.
+                        if(len > strlen(NVRAM_FILE_HEADER) + strlen(NVRAM_FILE_FOOTER) + 1)
                         {
-                            OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
-                            //if(data) self->setPropertyTable(data);
-                            if(data) self->copyUnserialzedData(NULL, data);
-                            nvram->release();
+                            char* xml = buffer + strlen(NVRAM_FILE_HEADER);
+                            size_t xmllen = (size_t)len - strlen(NVRAM_FILE_HEADER) - strlen(NVRAM_FILE_FOOTER);
+                            xml[xmllen-1] = 0;
+                            OSString *errmsg = 0;
+                            OSObject* nvram = OSUnserializeXML(xml, &errmsg);
+
+                            if(nvram)
+                            {
+                                OSDictionary* data = OSDynamicCast(OSDictionary, nvram);
+                                //if(data) self->setPropertyTable(data);
+                                if(data) self->copyUnserialzedData(NULL, data);
+                                nvram->release();
+
+                                self->mLoadedNVRAM = true;
+                            }
                         }
+
                     }
                     IOFree(buffer, (size_t)len);
-                    
-                    
+
                     self->mSafeToSync = true;
                     self->registerNVRAM();
                     //self->sync();
@@ -1147,7 +1166,9 @@ IOReturn FileNVRAM::read_buffer(const char* path, char** buffer, uint64_t* lengt
                     
                     if((error = vn_rdwr(UIO_READ, vp, *buffer, len, 0, UIO_SYSSPACE, IO_NOCACHE|IO_NODELOCKED|IO_UNIT, vfs_context_ucred(mCtx), (int *) 0, vfs_context_proc(mCtx))))
                     {
-                        LOG(ERROR, "error, writing to vnode(%s) failed with error %d!\n", path, error);
+                        LOG(ERROR, "error, reading from vnode(%s) failed with error %d!\n", path, error);
+                        IOFree(*buffer, (size_t)va.va_data_size);
+                        *buffer = NULL;
                     }
                 }
                 

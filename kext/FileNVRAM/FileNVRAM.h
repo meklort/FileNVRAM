@@ -181,6 +181,7 @@ private:
     bool mReadOnly;
     bool mInitComplete;
     bool mSafeToSync;
+    bool mLoadedNVRAM;
     UInt8 mLoggingLevel;
     
     vfs_context_t mCtx;
