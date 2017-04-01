@@ -1,6 +1,7 @@
 FileNVRAM Release Notes
 
 ========= develop version =======
+* Update FileNVRAM to properly handle csr/sip.
 * Add ability to disable FileNVRAM.kext from the command line.
 * Add ability to make FileNVRAM.kext read only from the command line.
 * Add ability to enable logging from the command line.
