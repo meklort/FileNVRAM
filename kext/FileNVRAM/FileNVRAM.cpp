@@ -479,7 +479,7 @@ void FileNVRAM::doSync(void)
     s->addString(NVRAM_FILE_FOOTER);
     
     
-    int error =	write_buffer(mFilePath->getCStringNoCopy(), s->text());
+    int error =	write_buffer(mFilePath->getCStringNoCopy(), s->text(), s->getLength());
     if(error)
     {
         LOG(ERROR, "Unable to write to %s, errno %d\n", mFilePath->getCStringNoCopy(), error);
@@ -1085,11 +1085,10 @@ OSObject* FileNVRAM::cast(const OSSymbol* key, OSObject* obj)
     return obj;
 }
 
-IOReturn FileNVRAM::write_buffer(const char* path, char* buffer)
+IOReturn FileNVRAM::write_buffer(const char* path, char* buffer, size_t length)
 {
     IOReturn error = 0;
 
-    int length = (int)strlen(buffer);
     int ares;
     struct vnode * vp;
     
