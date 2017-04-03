@@ -1115,7 +1115,7 @@ OSObject* FileNVRAM::cast(const OSSymbol* key, OSObject* obj)
     return obj;
 }
 
-IOReturn FileNVRAM::write_buffer(const char* path, char* buffer, size_t length)
+IOReturn FileNVRAM::write_buffer(const char* path, char* buffer, uint32_t length)
 {
     IOReturn error = 0;
 
