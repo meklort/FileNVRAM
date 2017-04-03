@@ -67,6 +67,15 @@ bool FileNVRAM::start(IOService *provider)
     char peBuf[256];
     bool earlyInit = false;
 
+    mLoggingLevel   = ERROR;     // start with logging errors only, can be update for debug
+
+    IORegistryEntry* entry = IORegistryEntry::fromPath("/options", gIODTPlane);
+    if(entry)
+    {
+        LOG(ERROR, "NVRAM already registered. Exiting.");
+        return false;
+    }
+
     if(mInitComplete)
     {
         //start is called upon wake for some reason.
@@ -97,7 +106,6 @@ bool FileNVRAM::start(IOService *provider)
 
     // Initialize member variables.
     mFilePath       = NULL;			// no known file
-    mLoggingLevel   = DISABLED;     // start with logging disabled, can be update for debug
     mSafeToSync     = false;        // Don't sync untill later
     mReadOnly       = false;        // Default to writeable NVRAM.
     mLoadedNVRAM    = false;        // NVRAM has yet to be loaded from disk or the bootloader
@@ -186,19 +194,27 @@ bool FileNVRAM::start(IOService *provider)
 
 void FileNVRAM::registerNVRAM()
 {
-    // Create entry in device tree -> IODeviceTree:/options
-    setName("AppleEFINVRAM");
-    setName("options", gIODTPlane);
-    IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
-    attachToParent(root, gIODTPlane);
-    registerService();
-
-    // Register with the platform expert
-    const OSSymbol* funcSym = OSSymbol::withCString("RegisterNVRAM");
-    if(funcSym)
+    IORegistryEntry* entry = IORegistryEntry::fromPath("/options", gIODTPlane);
+    if(entry)
     {
-        callPlatformFunction(funcSym, false, this, NULL, NULL, NULL);
-        funcSym->release();
+        LOG(ERROR, "NVRAM already registered. Exiting.");
+    }
+    else
+    {
+        // Create entry in device tree -> IODeviceTree:/options
+        setName("AppleEFINVRAM");
+        setName("options", gIODTPlane);
+        IORegistryEntry* root = IORegistryEntry::fromPath("/", gIODTPlane);
+        attachToParent(root, gIODTPlane);
+        registerService();
+
+        // Register with the platform expert
+        const OSSymbol* funcSym = OSSymbol::withCString("RegisterNVRAM");
+        if(funcSym)
+        {
+            callPlatformFunction(funcSym, false, this, NULL, NULL, NULL);
+            funcSym->release();
+        }
     }
 }
 
@@ -949,18 +965,21 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
                 uint64_t len;
                 if(0 != self->read_buffer(path, &buffer, &len))
                 {
-                    LOG(ERROR, "Unable to read in nvram data at %s\n", path);
+                    retryCount++;
+                    bool retry = (retryCount < 100);
+
+                    LOG(retry ? INFO : ERROR, "Unable to read in nvram data at %s\n", path);
                     if(0 != self->read_buffer(FILE_COMPAT_NVRAM_PATH, &buffer, &len))
                     {
-                        retryCount++;
-                        LOG(ERROR, "Unable to read in nvram data at %s\n", FILE_COMPAT_NVRAM_PATH);
+                        LOG(retry ? INFO : ERROR, "Unable to read in nvram data at %s\n", FILE_COMPAT_NVRAM_PATH);
                         // TODO: Check if / is mounted, and if not, try again untill it is.
-                        if(retryCount < 100)
+                        if(retry)
                         {
                             timer->setTimeoutMS(100);
                         }
                         else
                         {
+                            LOG(ERROR, "Unable to locate writable root. Registering NVRAM and enabling writing anyway. No NVRAM loaded from disk.");
                             self->mReadOnly = false; // Allow writes, hopefully the dist is mounted.
                             self->mSafeToSync = true;
                             self->registerNVRAM();
