@@ -109,7 +109,7 @@ public:
     virtual bool	start(IOService *provider) override;
     virtual void	stop(IOService *provider) override;
     
-    virtual bool    passiveMatch (OSDictionary *matching, bool changesOK);
+    virtual bool    matchPropertyTable(OSDictionary *table) override;
     
     virtual void    copyEntryProperties(const char* prefix, IORegistryEntry* entry);
     virtual void    copyUnserialzedData(const char* prefix, OSDictionary* dict);
