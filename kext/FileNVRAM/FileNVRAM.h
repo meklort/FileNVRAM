@@ -108,9 +108,11 @@ class FileNVRAM : public IODTNVRAM
 public:
     virtual bool	start(IOService *provider) override;
     virtual void	stop(IOService *provider) override;
-    
-    virtual bool    matchPropertyTable(OSDictionary *table) override;
-    
+
+#if APPLE_KEXT_LEGACY_ABI
+    virtual bool    passiveMatch(OSDictionary *matching, bool changesOK = false) override;
+#endif
+
     virtual void    copyEntryProperties(const char* prefix, IORegistryEntry* entry);
     virtual void    copyUnserialzedData(const char* prefix, OSDictionary* dict);
     

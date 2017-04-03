@@ -386,17 +386,28 @@ bool FileNVRAM::init(IORegistryEntry *old, const IORegistryPlane *plane)
     return IOService::init(old,plane);
 }
 
-
-bool FileNVRAM::passiveMatch (OSDictionary *matching, bool changesOK)
+#if APPLE_KEXT_LEGACY_ABI
+bool FileNVRAM::passiveMatch(OSDictionary *matching, bool changesOK)
 {
+    bool match = false;
     OSString *str = OSDynamicCast (OSString, matching->getObject
                                    (gIOProviderClassKey));
     
-    if(str) LOG(NOTICE, "passiveMatch(%s) called\n", str->getCStringNoCopy());
+    if(str)
+    {
+        match = str->isEqualTo ("AppleEFINVRAM");
+    }
     
-    if(str && str->isEqualTo ("AppleEFINVRAM")) return true;
-    return super::passiveMatch (matching, changesOK);
+    if(!match)
+    {
+        match = super::passiveMatch(matching, changesOK);
+    }
+
+    LOG(DISABLED, "passiveMatch(%s) called, matched = %d\n", str->getCStringNoCopy(), match);
+
+    return match;
 }
+#endif
 
 IOReturn FileNVRAM::syncOFVariables(void)
 {
