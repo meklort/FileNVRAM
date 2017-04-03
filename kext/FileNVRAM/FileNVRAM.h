@@ -40,7 +40,7 @@ do {                        \
         char pname[256];        \
         proc_name(proc_pid(vfs_context_proc(vfs_context_current())), pname, sizeof(pname)); \
         printf("Process: %s, ", pname);                                                     \
-        printf( HEADER x);  \
+        printf(HEADER x);   \
     }                       \
 } while(0)
 
@@ -160,7 +160,7 @@ public:
     virtual IOByteCount savePanicInfo(UInt8 *buffer, IOByteCount length) override;
     virtual bool safeToSync(void) override;
     
-    IOReturn setPowerState ( unsigned long whichState, IOService * whatDevice ) override;
+    IOReturn setPowerState(unsigned long whichState, IOService * whatDevice) override;
     
     
 private:
@@ -175,7 +175,7 @@ private:
     
     virtual OSObject* cast(const OSSymbol* key, OSObject* obj);
     
-    static IOReturn dispatchCommand( OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3 );
+    static IOReturn dispatchCommand(OSObject* owner, void* arg0, void* arg1, void* arg2, void* arg3);
     
     virtual IOReturn write_buffer(const char* path, char* buffer, uint32_t length);
     virtual IOReturn read_buffer(const char* path, char** buffer, uint64_t* length);

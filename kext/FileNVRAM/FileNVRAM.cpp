@@ -131,8 +131,8 @@ bool FileNVRAM::start(IOService *provider)
     IORegistryEntry* bootnvram = IORegistryEntry::fromPath(NVRAM_FILE_DT_LOCATION, gIODTPlane);
     
     // Create the command gate.
-    mCommandGate = IOCommandGate::commandGate( this, dispatchCommand );
-    getWorkLoop()->addEventSource( mCommandGate );
+    mCommandGate = IOCommandGate::commandGate(this, dispatchCommand);
+    getWorkLoop()->addEventSource(mCommandGate);
     
     // Replace the IOService dicionary with an empty one, clean out variables we don't want.
     OSDictionary* dict = OSDictionary::withCapacity(1);
@@ -162,7 +162,7 @@ bool FileNVRAM::start(IOService *provider)
         {
             // Don't write to the disk untill the disk is found.
             mReadOnly = true;
-            getWorkLoop()->addEventSource( mTimer);
+            getWorkLoop()->addEventSource(mTimer);
             mTimer->setTimeoutMS(50); // callback isn't being setup right, causes a panic
         }
         else
@@ -423,7 +423,7 @@ void FileNVRAM::registerNVRAMController(IONVRAMController *nvram)
 void FileNVRAM::sync(void)
 {
     LOG(NOTICE, "sync() called\n");
-    mCommandGate->runCommand( ( void * ) kNVRAMSyncCommand, NULL, NULL, NULL );
+    mCommandGate->runCommand((void*)kNVRAMSyncCommand, NULL, NULL, NULL );
 }
 
 void FileNVRAM::doSync(void)
@@ -454,7 +454,7 @@ void FileNVRAM::doSync(void)
     OSSymbol * key = NULL;
     OSObject * value = NULL;
     
-    while( (key = OSDynamicCast(OSSymbol,iter->getNextObject())))
+    while((key = OSDynamicCast(OSSymbol,iter->getNextObject())))
     {
         
         //just get the value now anyway
@@ -465,7 +465,7 @@ void FileNVRAM::doSync(void)
         
         const char * keyChar = key->getCStringNoCopy();
         const char * guidValueStr = NULL;
-        if( ( guidValueStr = strstr(keyChar , NVRAM_SEPERATOR)) != NULL)
+        if((guidValueStr = strstr(keyChar, NVRAM_SEPERATOR)) != NULL)
         {
             //we have a GUID child to deal with
             //now substring out the GUID cause thats going to be a DICT itself on the new outputDict
@@ -912,7 +912,7 @@ bool FileNVRAM::safeToSync(void)
     else          return false;
 }
 
-IOReturn FileNVRAM::dispatchCommand( OSObject* owner,
+IOReturn FileNVRAM::dispatchCommand(OSObject* owner,
                                     void* arg0,
                                     void* arg1,
                                     void* arg2,
@@ -952,15 +952,15 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
             
             do
             {
-                dict = IOService::resourceMatching( "IOBSD" );
+                dict = IOService::resourceMatching("IOBSD");
                 if(dict)
                 {
-                    if(IOService::waitForMatchingService( dict, timeout ))
+                    if(IOService::waitForMatchingService(dict, timeout))
                     {
                         found = true;
                     }
                 }
-            } while( false );
+            } while(false);
             
             OSSafeReleaseNULL(dict);
             OSSafeReleaseNULL(match);
@@ -1059,7 +1059,7 @@ void FileNVRAM::timeoutOccurred(OSObject *target, IOTimerEventSource* timer)
     }
 }
 
-IOReturn FileNVRAM::setPowerState ( unsigned long whichState, IOService * whatDevice )
+IOReturn FileNVRAM::setPowerState(unsigned long whichState, IOService * whatDevice)
 {
     LOG(NOTICE, "setPowerState() state %lu\n",whichState);
     
@@ -1224,7 +1224,7 @@ IOReturn FileNVRAM::read_buffer(const char* path, char** buffer, uint64_t* lengt
 
 void FileNVRAM::handleSetting(const OSObject* object, const OSObject* value)
 {
-    OSString* key = OSDynamicCast( OSString, object);
+    OSString* key = OSDynamicCast(OSString, object);
 
     if(!key)
     {
