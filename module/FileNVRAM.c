@@ -76,7 +76,7 @@ void addNVRAMVariable(char* key, TagPtr entry)
     {
         removeNVRAMVariable(key);
         XMLAddTagToDictionary(gNVRAMData, key, entry);
-    }    
+    }
 }
 
 /**
@@ -88,7 +88,7 @@ void removeNVRAMVariable(char* key)
     {
         // look through dict and find entry, then remove it
         TagPtr tagList, parentTag, tag;
-            
+
         tag = 0;
         parentTag = 0;
         tagList = gNVRAMData->tag;
@@ -107,7 +107,7 @@ void removeNVRAMVariable(char* key)
                 {
                     // Remove element
                     parentTag->tagNext = tag->tagNext;
-                    
+
                     // free tag
                     tag->tagNext = 0;
                     XMLFreeTag(tag);
@@ -147,28 +147,28 @@ static void InternalreadSMBIOSInfo(SMBEntryPoint *eps)
     // Copied from readSMBIOSInfo, we need it to run early, so we duplicate + modify here
     
     // Locate teh SMB header in main memory
-	uint8_t *structPtr = (uint8_t *)eps->dmi.tableAddress;
-	SMBStructHeader *structHeader = (SMBStructHeader *)structPtr;
+    uint8_t *structPtr = (uint8_t *)eps->dmi.tableAddress;
+    SMBStructHeader *structHeader = (SMBStructHeader *)structPtr;
     
-	for (;((eps->dmi.tableAddress + eps->dmi.tableLength) > ((uint32_t)(uint8_t *)structHeader + sizeof(SMBStructHeader)));)
-	{
-		switch (structHeader->type)
-		{
-			case kSMBTypeSystemInformation:
+    for (;((eps->dmi.tableAddress + eps->dmi.tableLength) > ((uint32_t)(uint8_t *)structHeader + sizeof(SMBStructHeader)));)
+    {
+        switch (structHeader->type)
+        {
+            case kSMBTypeSystemInformation:
                 // Read out the platfomr UUID and save it.
-				Platform.UUID = ((SMBSystemInformation *)structHeader)->uuid;
+                Platform.UUID = ((SMBSystemInformation *)structHeader)->uuid;
                 return;
-				break;
-		}
+                break;
+        }
         
-		structPtr = (uint8_t *)((uint32_t)structHeader + structHeader->length);
-		for (; ((uint16_t *)structPtr)[0] != 0; structPtr++);
-        
-		if (((uint16_t *)structPtr)[0] == 0)
-			structPtr += 2;
-        
-		structHeader = (SMBStructHeader *)structPtr;
-	}
+        structPtr = (uint8_t *)((uint32_t)structHeader + structHeader->length);
+        for (; ((uint16_t *)structPtr)[0] != 0; structPtr++);
+
+        if (((uint16_t *)structPtr)[0] == 0)
+            structPtr += 2;
+
+        structHeader = (SMBStructHeader *)structPtr;
+    }
 }
 
 static BVRef scanforNVRAM(BVRef chain)
@@ -216,9 +216,9 @@ void processDict(TagPtr dictionary, Node * node)
     {
         int length = 0;
         const char* key = XMLCastString(XMLGetKey(dictionary,count));
-		
+
         TagPtr entry = XMLGetProperty(dictionary,key);
-        
+
         if(XMLIsData(entry))
         {
             char* value = XMLCastData(entry, &length);
@@ -250,9 +250,9 @@ void processDict(TagPtr dictionary, Node * node)
             //  failed, or does not exist in this version of chameleon
             printf("Unable to handle key %s\n", key);
         }
-        
+
         count--;
-        
+
     }
 }
 
@@ -261,26 +261,26 @@ void processDict(TagPtr dictionary, Node * node)
  */
 static EFI_CHAR8* getSmbiosUUID()
 {
-	static EFI_CHAR8		 uuid[UUID_LEN];
-	int						 i, isZero, isOnes;
-	SMBByte					*p;
-	
-	p = (SMBByte*)Platform.UUID;
-	
-	for (i=0, isZero=1, isOnes=1; i<UUID_LEN; i++)
-	{
-		if (p[i] != 0x00) isZero = 0;
-		if (p[i] != 0xff) isOnes = 0;
-	}
-	
-	if (isZero || isOnes) // empty or setable means: no uuid present
-	{
-		verbose("No UUID present in SMBIOS System Information Table\n");
-		return 0;
-	}
-	
-	memcpy(uuid, p, UUID_LEN);
-	return uuid;
+    static EFI_CHAR8         uuid[UUID_LEN];
+    int                      i, isZero, isOnes;
+    SMBByte                 *p;
+
+    p = (SMBByte*)Platform.UUID;
+
+    for (i=0, isZero=1, isOnes=1; i<UUID_LEN; i++)
+    {
+        if (p[i] != 0x00) isZero = 0;
+        if (p[i] != 0xff) isOnes = 0;
+    }
+
+    if (isZero || isOnes) // empty or setable means: no uuid present
+    {
+        verbose("No UUID present in SMBIOS System Information Table\n");
+        return 0;
+    }
+
+    memcpy(uuid, p, UUID_LEN);
+    return uuid;
 }
 
 static void clearBootArgsHook()
@@ -313,7 +313,7 @@ static void getcommandline(char* args, char* args_end)
         free(gCommandline);
         gCommandline = 0;
     }
-    
+
     // Grab the current boot args from the user and save it
     if(strlen(args))
     {
@@ -334,15 +334,15 @@ static void readplist()
     /* We need to patch the kernel to load up an mkext in the event that the kernel is prelinked. */
     if(!is_module_loaded("KernelPatcher.dylib", 0)) register_hook_callback("DecodeKernel", &patch_kernel);
 #endif
-    
-    
+
+
     // We need the platform UUID *early*
     InternalreadSMBIOSInfo(getSmbios(SMBIOS_ORIGINAL));
     const char* uuid = getStringFromUUID(getSmbiosUUID());
-    
+
     // By the time we are here, the file system has already been probed, lets fine the nvram plist.
     BVRef bvr = scanforNVRAM(bvChain);
-    
+
     /** Load Dictionary if possible **/
     if(bvr)
     {
@@ -373,7 +373,6 @@ static void readplist()
             }
         }
         free(nvramPath);
-        
     }
 }
 
@@ -385,7 +384,7 @@ void FileNVRAM_hook()
     if(disable) return;
 
     const char* uuid = getStringFromUUID(getSmbiosUUID());
-    
+
     Node * nvramNode = DT__FindNode("/chosen/nvram", true);
     Node * settingsNode = DT__AddChild(nvramNode, FILE_NVRAM_GULD);
 
@@ -400,14 +399,14 @@ void FileNVRAM_hook()
         DT__AddProperty(nvramNode, "boot-args", strlen(null)+1, (void*)null);
         removeNVRAMVariable("boot-args");
     }
-    
+
     if(gNVRAMData)
     {
         processDict(gNVRAMData, nvramNode);
     }
-   
+
     char* path = NULL;
-    
+
     BVRef bvr = getBootVolumeRef(NULL, (const char**)&path);
     if(bvr->OSisInstaller)
     {
@@ -447,9 +446,9 @@ static bool addMKext(void* binary, unsigned long len)
 
     // Thin binary, if needed
     ThinFatFile(&binary, &len);
-    
+
     DriversPackage * package = binary;
-    
+
     // Verify the MKext.
     if (( GetPackageElement(signature1) != kDriverPackageSignature1) ||
         ( GetPackageElement(signature2) != kDriverPackageSignature2) ||
@@ -459,19 +458,19 @@ static bool addMKext(void* binary, unsigned long len)
     {
         return false;
     }
-    
+
     // Make space for the MKext.
     driversLength = GetPackageElement(length);
     driversAddr   = AllocateKernelMemory(driversLength);
-    
+
     // Copy the MKext.
     memcpy((void *)driversAddr, (void *)package, driversLength);
-    
+
     // Add the MKext to the memory map.
     sprintf(segName, "DriversPackage-%lx", driversAddr);
     AllocateMemoryRange(segName, driversAddr, driversLength,
                         kBootDriverTypeMKEXT);
-    
+
     return true;
 }
 #endif

@@ -35,7 +35,7 @@ static inline void handleSetting(const OSObject* object, const OSObject* value, 
     UInt8 mLoggingLevel = entry->mLoggingLevel;
 
     OSString* key = OSDynamicCast( OSString, object);
-    
+
     if(!key)
     {
         LOG(NOTICE, "Unknown key\n");
@@ -45,7 +45,7 @@ static inline void handleSetting(const OSObject* object, const OSObject* value, 
     {
         LOG(NOTICE, "Handling key %s\n", key->getCStringNoCopy());
     }
-    
+
     if(key->isEqualTo(NVRAM_SET_FILE_PATH))
     {
         OSString* str = OSDynamicCast(OSString, value);
